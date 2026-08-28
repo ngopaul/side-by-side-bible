@@ -1,0 +1,18 @@
+{
+  "inputstring": "Gen.1.1,Gen.1.2",
+  "detected": "Genesis 1:1-2",
+  "verses": [
+    {
+      "ref": "Genesis 1:1",
+      "text": "In the beginning God created the heavens and the earth.",
+      "urlpfx": "Gen1"
+    },
+    {
+      "ref": "Gen.1.2",
+      "text": "But the earth became waste and emptiness.",
+      "urlpfx": "Gen1"
+    }
+  ],
+  "message": "",
+  "copyright": "LSM response copyright"
+}

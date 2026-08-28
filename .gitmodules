@@ -1,0 +1,9 @@
+[submodule "morphhb"]
+	path = morphhb
+	url = https://github.com/openscriptures/morphhb.git
+[submodule "OpenGNT"]
+	path = OpenGNT
+	url = https://github.com/eliranwong/OpenGNT.git
+[submodule "OpenHebrewBible"]
+	path = OpenHebrewBible
+	url = https://github.com/eliranwong/OpenHebrewBible.git

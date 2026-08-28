@@ -1,0 +1,39 @@
+{
+  "data": {
+    "bibleId": "nasb-id",
+    "copyright": "NASB exact copyright",
+    "content": [
+      {
+        "name": "span",
+        "type": "tag",
+        "attrs": {
+          "class": ["v"],
+          "verseId": "GEN.1.1"
+        },
+        "items": [{ "type": "text", "text": "1" }]
+      },
+      { "type": "text", "text": "In the beginning " },
+      { "type": "text", "text": "God created." },
+      {
+        "name": "span",
+        "type": "tag",
+        "attrs": {
+          "class": ["v"],
+          "verseId": "GEN.1.2"
+        },
+        "items": [{ "type": "text", "text": "2" }]
+      },
+      { "type": "text", "text": "The earth was formless." }
+    ],
+    "parallels": [
+      {
+        "bibleId": "niv-id",
+        "copyright": "NIV exact copyright",
+        "content": "<p><span class=\"v\" data-sid=\"GEN.1.1\">1</span>In the beginning God created.<span class=\"v\" data-sid=\"GEN.1.2\">2</span>Now the earth was formless.</p>"
+      }
+    ]
+  },
+  "meta": {
+    "fumsToken": "example"
+  }
+}

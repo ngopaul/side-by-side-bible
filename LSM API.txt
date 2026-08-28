@@ -1,0 +1,659 @@
+API Documentation
+About The Text Only Holy Bible Recovery Version API ^
+The Text Only Holy Bible Recovery Version API is a simple HTTP URL API that can be used to access verses from the Holy Bible Recovery Version for integration into other software or plugins.
+
+Conditions for Use ^
+Summary:^
+Living Stream Ministry (LSM) runs an application programming interface (API) service to enable access to the text of the Recovery Version of the Holy Bible and welcomes you to use it by integrating it into your website, plugins, or applications. Our service is designed to give you a way to reference and display the text of the Recovery Version in your projects without the need to request special permission. 
+
+Terms of Use:^
+The following terms and conditions govern the use of this website, its API, documentation, and all the content, services, and products accessible through it (collectively, the “Website”). This Website is offered subject to your acceptance without modification of all of the terms and conditions contained herein and all other operating rules, policies, and procedures that may be published from time to time on this Site by LSM (collectively, the “Agreement”).
+
+Please read this Agreement carefully before accessing or using the Website. By accessing or using any part of the Website, you agree to become bound by the terms and conditions of this agreement. If you do not agree to all the terms and conditions of this agreement, then you may not access the Website or use any services provided.
+
+Attribution: LSM requires you, the user or developer accessing this Website and its services, to display the attribution statement provided in the <copyright></copyright> tags of the deliverable "verses.xml" or in the copyright value of the deliverable "verses.json" supplied by the API (e.g. verses accessed from the Holy Bible Recovery Version) in your verse display implementation. LSM reserves the right to change this attribution statement at any time and without any notice.
+Changes: LSM reserves the right, at its sole discretion, to modify or replace any part of this Agreement. It is your responsibility to check this Agreement periodically for changes. Your continued use of or access to the Website following the posting of any changes to this Agreement constitutes acceptance of those changes.
+Proprietary Rights: This Website and all materials therein or transferred thereby, including, without limitation, software, images, graphics, illustrations, text, logos, trademarks, service marks, copyrights, and all Intellectual Property Rights related thereto, are the exclusive property of LSM. Except as explicitly provided herein, nothing in this Agreement shall be deemed to create a license in or under any such Intellectual Property Rights, and you agree not to sell, license, rent, modify, edit, or create derivative works from this website or its API. Further, you may not store any amount of the text of the Holy Bible Recovery Version for offline use. Use of this website with its API for any purpose not expressly permitted by this Agreement is strictly prohibited.
+Termination: LSM may terminate your access to all or any part of the Website at any time, with or without cause, with or without notice, effective immediately. If you wish to terminate this Agreement, you may simply discontinue using the Website. All provisions of this Agreement, which by their nature should survive termination, shall survive termination, including, without limitation, ownership provisions, warranty disclaimers, indemnity and limitations of liability.
+Relationship: Nothing in these Terms of Use will be construed as creating an employer-employee relationship, a partnership, or a joint venture between you and LSM. While you may publicly refer to the fact that you have implemented the API, you agree not make any other public statements that assert or imply any other relationship with LSM, unless you have LSM's prior written approval.
+Disclaimer of Warranties: The Website is provided “as is.” LSM hereby disclaims all warranties of any kind, express or implied, including, without limitation, the warranties of merchantability, fitness for a particular purpose, and non-infringement. Living Stream Ministry makes no warranty that the Website will be error free or that access thereto will be continuous or uninterrupted. You understand that you download from, or otherwise obtain content or services through, the Website at your own discretion and risk.
+Limitation of Liability: In no event will Living Stream Ministry be liable with respect to any subject matter of this agreement under any contract, negligence, strict liability, or other legal or equitable theory for: (i) any special, incidental, or consequential damages; (ii) the cost of procurement for substitute products or services; or (iii) for interruption of use or loss or corruption of data. The foregoing shall not apply to the extent prohibited by applicable law.
+Indemnification: You agree to indemnify and hold harmless LSM and its respective directors, officers, employees and agents from and against any and all claims and expenses, including attorneys’ fees, arising out of your use of the Website, including but not limited to your violation of this Agreement.
+This Website and it API should be used in accordance with LSM's Copyright Policy
+How to use this API ^
+This API can be accessed using a simple HTTP GET request with Basic Authentication (See IETF and MDN for more information). The general structure of the request string is as follows:
+
+curl https://baseurl/txo.php? -u appid:token -H 'Accept: application/json' -d String=verses -d Lang=eng -d In=osis
+
+https://appid:token@baseurl/txo.php?String=verses&In=osis&Lang=spa&Out=json
+where:
+
+appid
+Refers to a user generated app identifier created at api.lsm.org.
+token
+Refers to the token assigned to an app at api.lsm.org.
+baseurl
+Refers to the location where the API resides such as 'https://api.lsm.org/recver'.
+String
+Is a variable containing the list of verses to be requested provided either in default input mode as 'Prov. 29:18; Acts 26:19; Eph. 4:4-6; Rev. 21:2, 9-10'
+or in OSIS input mode as Proverbs.29.18,Acts.26.19,Ephesians.4.4-Ephesians.4.6,Revelation.21.2,Revelation.21.9-Revelation.21.10. Note that in OSIS input mode the requested verses string is not encapsulated in single quotes.
+Out
+Optional: Is a variable that specifies JSON as the response output (default output is XML). Note that in the curl command the mode can be specified as an Accept header variable.
+In
+Optional: Is a variable that specifies OSIS as the input format for verses.
+Lang
+Optional: Is a variable that specifies the language for the verse references (Default language is English, and values are: spa for Spanish, and eng for English.)
+Default Input Format ^
+A valid input string in the default input mode consists of no more than six kinds of characters, these are: alphabets including the period punctuation and the hyphen, numbers, commas, colons, semicolons, and spaces. Using any other kind of character in an input string will result in an error and no output.
+
+While there are various verse referencing styles, only the style defined below will work with this API.
+
+The use of Alphabets and Numbers ^
+A general rule to observe when constructing a valid input string is that whereas book names may include alphabets and numbers, book chapters and verse numbers can include only Arabic numerals. Hence, while the reference:
+
+Hebrews 1:4 is valid,
+Hebrews I.IV is not valid,
+Hebrews I:IV is not valid, and
+Hebrews I,IV is not valid.
+The use of Periods, Commas, and Semicolons ^
+The API also understands periods, commas, and semicolons in a specific way.
+
+The period is allowed only for book name abbreviations. For instance:
+
+Matt. 28:19 is valid, but
+Matt. 28.19 is not valid
+The semicolon is used either for the separation of two or more full references or for references within the same book but in different chapters. For instance:
+
+Prov. 29:18; Acts 26:19 is valid, and
+Acts 9:22; 26:19 is valid
+The comma is allowed only for additional verse citations within the same book and chapter. Some examples are:
+
+John 1:1, 14
+Heb. 1:2, 5-6, 8
+Note: Be careful not to switch semicolons for commas and vice versa.
+
+As you may have observed in the examples above, the colon is used only to separate verse numbers and chapter numbers.
+
+Based on the overview above, a simple input string will consist of only alphabets, numbers, and colons. Examples include:
+
+Acts 13:13
+Jude 9
+Eph. 4:6-4
+
+and a complex input string may consist of all allowed character sets. For instance:
+
+Prov. 29:18; Acts 26:19
+Prov. 29:18; Acts 26:19; John 1:12-13, 16
+A final note regarding single chapter books is that they are to be referenced as though they contained only verses. For instance:
+
+Jude 9 is valid, but
+Jude 1:9 is not valid.
+Book Names and Abbreviations, Chapters, and Verses ^
+This API supports only book names, chapters, and verses found in the Recovery Version of the Holy Bible. The table below consists of valid book names, recommended book abbreviations, and maximum number of chapters in the book that may be used in constructing a valid input string.
+
+
+Book Name	Number of Chapters	Recommended Abbreviation
+Genesis	50	Gen.
+Exodus	40	Exo.
+Leviticus	27	Lev.
+Numbers	36	Num.
+Deuteronomy	34	Deut.
+Joshua	24	Josh.
+Judges	21	Judg.
+Ruth	4	Ruth
+1 Samuel	31	1 Sam.
+2 Samuel	24	2 Sam.
+1 Kings	22	1 Kings
+2 Kings	25	2 Kings
+1 Chronicles	29	1 Chron.
+2 Chronicles	36	2 Chron.
+Ezra	10	Ezra
+Nehemiah	13	Neh.
+Esther	10	Esth.
+Job	42	Job
+Psalms	150	Psa.
+Proverbs	31	Prov.
+Ecclesiastes	12	Eccl.
+Song of Solomon	8	S.S.
+Isaiah	66	Isa.
+Jeremiah	52	Jer.
+Lamentations	5	Lam.
+Ezekiel	48	Ezek.
+Daniel	12	Dan.
+Hosea	14	Hosea
+Joel	3	Joel
+Amos	9	Amos
+Obadiah	1	Oba.
+Jonah	4	Jonah
+Micah	7	Micah
+Nahum	3	Nahum
+Habakkuk	3	Hab.
+Zephaniah	3	Zeph.
+Haggai	2	Hag.
+Zechariah	14	Zech.
+Malachi	4	Mal.
+Matthew	28	Matt.
+Mark	16	Mark
+Luke	24	Luke
+John	21	John
+Acts	28	Acts
+Romans	16	Rom.
+1 Corinthians	16	1 Cor.
+2 Corinthians	13	2 Cor.
+Galatians	6	Gal.
+Ephesians	6	Eph.
+Philippians	4	Phil.
+Colossians	4	Col.
+1 Thessalonians	5	1 Thes.
+2 Thessalonians	3	2 Thes.
+1 Timothy	6	1 Tim.
+2 Timothy	4	2 Tim.
+Titus	3	Titus
+Philemon	1	Philem.
+Hebrews	13	Heb.
+James	5	James
+1 Peter	5	1 Pet.
+2 Peter	3	2 Pet.
+1 John	5	1 John
+2 John	1	2 John
+3 John	1	3 John
+Jude	1	Jude
+Revelation	22	Rev.
+
+Output Format ^
+When the API is provided an input, it will default to returning a well formed XML file titled verses.xml. However, it can return a JSON file titled verses.json when the "Out" parameter is set to json (&Out=json). The default verses.xml file is structured as follows:
+
+<?xml version="1.0" encoding="utf-8" ?>
+<request>
+    <inputstring></inputstring>
+    <detected></detected>
+    <verses>
+        <verse>
+            <ref>reference</ref>
+            <text>verse text</text>
+            <urlpfx>URL postfix</urlpfx>
+        </verse>
+        <verse>
+            <ref>reference</ref>
+            <text>verse text</text>
+            <urlpfx>URL postfix</urlpfx>
+        </verse>
+    </verses>
+    <message>errors</message>
+    <copyright>copyright string</copyright>
+</request>
+    
+where:
+
+<request></request>
+Is the top-level container for an entire request.
+<inputstring></inputstring>
+Contains the actual input, the list of verses sent to the API.
+<detected></detected>
+Contains what the API recognizes after error correction and format fixes.
+<verses></verses>
+Is a container for all verses requested.
+<verse></verse>
+Is a container for a single verse in the list of requested verses.
+<ref></ref>
+Contains a properly formated reference for a requested verse.
+<text></text>
+Contains the text from a requested verse.
+<urlpfx></urlpfx>
+Contains the URL postfix to generate Recover Version website and app link (i.e. https://text.recoveryversion.bible/<urlpfx>).
+<message></message>
+Contains information on any errors encountered while processing a request.
+<copyright></copyright>
+Contains the copyright string that should be displayed along with the verses in the software accessing this API.
+The verses.json file is structured as follows:
+
+{
+"inputstring": "",
+"detected": "",
+"verses": [
+           {"ref": "reference", "text": "verse text", "urlpfx": "URL postfix"},
+           {"ref": "reference", "text": "verse text", "urlpfx": "URL postfix"}
+       ],
+"message": "errors",
+"copyright": "copyright string"
+}
+          
+where:
+
+"inputstring"
+Contains the actual input, the list of verses sent to the API.
+"detected"
+Contains what the API recognizes after error correction and format fixes.
+"verses"
+Is a container for all verses requested.
+"ref"
+Contains a properly formated reference for a requested verse.
+"text"
+Contains the text from a requested verse.
+"urlpfx"
+Contains the URL postfix to generate Recover Version website and app link (i.e. https://text.recoveryversion.bible/<urlpfx>).
+"message"
+Contains information on any errors encountered while processing a request.
+"copyright"
+Contains the copyright string that should be displayed along with the verses in the software accessing this API.
+Examples ^
+Some examples of inputs and the resulting verses.xml and verses.json utput are provided below:
+
+Input: https://baseurl/txo.php?String='John 1:14; 1 Cor. 15:45b; Rev. 3:1; Matt. 16:18; 1 Cor. 12:12; Rev. 21:2'
+
+OSIS Input: https://baseurl/txo.php?String=John.1.14,1Cor.15:45b,Rev.3.1,Matt.16.18, 1 Cor. 12.12, Rev. 21.2&In=osis
+
+Output:
+
+<?xml version="1.0" encoding="utf-8" ?>
+<request>
+    <inputstring>'John 1:14; 1 Cor. 15:45b; Rev. 3:1; Matt. 16:18; 1 Cor. 12:12; Rev. 21:2'</inputstring>
+    <detected>John 1:14; 1 Cor. 15:45; Rev. 3:1; Matt. 16:18; 1 Cor. 12:12; Rev. 21:2.</detected>
+    <verses>
+        <verse>
+            <ref>John 1:14</ref>
+            <text>And the Word became flesh and tabernacled among us (and we beheld His glory, glory as of the only Begotten from the Father), full of grace and reality.</text>
+        </verse>
+        <verse>
+            <ref>1 Cor. 15:45</ref>
+            <text>So also it is written, The first man, Adam, became a living soul; the last Adam [became] a life-giving Spirit.</text>
+        </verse>
+        <verse>
+            <ref>Rev. 3:1</ref>
+            <text>And to the messenger of the church in Sardis write: These things says He who has the seven Spirits of God and the seven stars: I know your works, that you have a name that you are living, and yet you are dead.</text>
+        </verse>
+        <verse>
+            <ref>Matt. 16:18</ref>
+            <text>And I also say to you that you are Peter, and upon this rock I will build My church, and the gates of Hades shall not prevail against it.</text>
+        </verse>
+        <verse>
+            <ref>1 Cor. 12:12</ref>
+            <text>For even as the body is one and has many members, yet all the members of the body, being many, are one body, so also is the Christ.</text>
+        </verse>
+        <verse>
+            <ref>Rev. 21:2</ref>
+            <text>And I saw the holy city, New Jerusalem, coming down out of heaven from God, prepared as a bride adorned for her husband.</text>
+        </verse>
+    </verses>
+    <message>    </message>
+    <copyright>Verses accessed from the Holy Bible Recovery Version (text-only edition) © 2022 Living Stream Ministry www.lsm.org</copyright>
+</request>
+      
+Input: https://baseurl/txo.php?String='John 1:14; 1 Cor. 15:45b; Rev. 3:1; Matt. 16:18; 1 Cor. 12:12; Rev. 21:2'&Out=json
+
+OSIS Input: https://baseurl/txo.php?String=John.1.14,1Cor.15:45b,Rev.3.1,Matt.16.18, 1 Cor. 12.12, Rev. 21.2&In=osis&Out=json
+
+Output:
+
+{
+"inputstring": "'John 1:14; 1 Cor. 15:45b; Rev. 3:1; Matt. 16:18; 1 Cor. 12:12; Rev. 21:2'",
+"detected": "John 1:14; 1 Cor. 15:45; Rev. 3:1; Matt. 16:18; 1 Cor. 12:12; Rev. 21:2.",
+"verses": [
+    {"ref": "John 1:14", "text": "And the Word became flesh and tabernacled among us (and we beheld His glory, glory as of the only Begotten from the Father), full of grace and reality."},
+    {"ref": "1 Cor. 15:45", "text": "So also it is written, "The first man, Adam, became a living soul"; the last Adam [became] a life-giving Spirit."},
+    {"ref": "Rev. 3:1", "text": "And to the messenger of the church in Sardis write: These things says He who has the seven Spirits of God and the seven stars: I know your works, that you have a name that you are living, and yet you are dead."},
+    {"ref": "Matt. 16:18", "text": "And I also say to you that you are Peter, and upon this rock I will build My church, and the gates of Hades shall not prevail against it."},
+    {"ref": "1 Cor. 12:12", "text": "For even as the body is one and has many members, yet all the members of the body, being many, are one body, so also is the Christ."},
+    {"ref": "Rev. 21:2", "text": "And I saw the holy city, New Jerusalem, coming down out of heaven from God, prepared as a bride adorned for her husband."}
+    ],
+"message": "",
+"copyright": "Verses accessed from the Holy Bible Recovery Version (text-only edition) © 2022 Living Stream Ministry www.lsm.org"
+}
+      
+Input: https://baseurl/txo.php?String='1 John 1:5-6; John 17:17; 18:37; 1 Tim. 2:4; 3:15; 2 Tim. 2:15'
+
+Output:
+
+<?xml version="1.0" encoding="utf-8" ?>
+<request>
+    <inputstring>'1 John 1:5-6; John 17:17; 18:37; 1 Tim. 2:4; 3:15; 2 Tim. 2:15'</inputstring>
+    <detected>1 John 1:5-6; John 17:17; John 18:37; 1 Tim. 2:4; 1 Tim. 3:15; 2 Tim. 2:15.</detected>
+    <verses>
+        <verse>
+            <ref>1 John 1:5</ref>
+            <text>And this is the message which we have heard from Him and announce to you, that God is light and in Him is no darkness at all.</text>
+        </verse>
+        <verse>
+            <ref>1 John 1:6</ref>
+            <text>If we say that we have fellowship with Him and yet walk in the darkness, we lie and are not practicing the truth;</text>
+        </verse>
+        <verse>
+            <ref>John 17:17</ref>
+            <text>Sanctify them in the truth; Your word is truth.</text>
+        </verse>
+        <verse>
+            <ref>John 18:37</ref>
+            <text>Pilate said therefore to Him, So then You are a king? Jesus answered, You say that I am a king. For this I have been born, and for this I have come into the world, that I would testify to the truth. Everyone who is of the truth hears My voice.</text>
+        </verse>
+        <verse>
+            <ref>1 Tim. 2:4</ref>
+            <text>Who desires all men to be saved and to come to the full knowledge of the truth.</text>
+        </verse>
+        <verse>
+            <ref>1 Tim. 3:15</ref>
+            <text>But if I delay, [I write] that you may know how one ought to conduct himself in the house of God, which is the church of the living God, the pillar and base of the truth.</text>
+        </verse>
+        <verse>
+            <ref>2 Tim. 2:15</ref>
+            <text>Be diligent to present yourself approved to God, an unashamed workman, cutting straight the word of the truth.</text>
+        </verse>
+    </verses>
+    <message>    </message>
+    <copyright>Verses accessed from the Holy Bible Recovery Version (text-only edition) © 2022 Living Stream Ministry www.lsm.org</copyright>
+</request>
+      
+Input: https://baseurl/txo.php?String='Prov. 29:18a; Acts 26:19; Eph. 4:4-6; Rev. 21:2, 9-10'
+
+Output:
+
+<?xml version="1.0" encoding="utf-8" ?>
+<request>
+    <inputstring>'Prov. 29:18a; Acts 26:19; Eph. 4:4-6; Rev. 21:2, 9-10'</inputstring>
+    <detected>Prov. 29:18; Acts 26:19; Eph. 4:4-6; Rev. 21:2; Rev. 21:9-10.</detected>
+    <verses>
+        <verse>
+            <ref>Prov. 29:18</ref>
+            <text>Where there is no vision, the people cast off restraint; / But happy is he who keeps the law.</text>
+        </verse>
+        <verse>
+            <ref>Acts 26:19</ref>
+            <text>Therefore, King Agrippa, I was not disobedient to the heavenly vision,</text>
+        </verse>
+        <verse>
+            <ref>Eph. 4:4</ref>
+            <text>One Body and one Spirit, even as also you were called in one hope of your calling;</text>
+        </verse>
+        <verse>
+            <ref>Eph. 4:5</ref>
+            <text>One Lord, one faith, one baptism;</text>
+        </verse>
+        <verse>
+            <ref>Eph. 4:6</ref>
+            <text>One God and Father of all, who is over all and through all and in all.</text>
+        </verse>
+        <verse>
+            <ref>Rev. 21:2</ref>
+            <text>And I saw the holy city, New Jerusalem, coming down out of heaven from God, prepared as a bride adorned for her husband.</text>
+        </verse>
+        <verse>
+            <ref>Rev. 21:9</ref>
+            <text>And one of the seven angels who had the seven bowls full of the seven last plagues came and spoke with me, saying, Come here; I will show you the bride, the wife of the Lamb.</text>
+        </verse>
+        <verse>
+            <ref>Rev. 21:10</ref>
+            <text>And he carried me away in spirit onto a great and high mountain and showed me the holy city, Jerusalem, coming down out of heaven from God,</text>
+        </verse>
+    </verses>
+    <message>    </message>
+    <copyright>Verses accessed from the Holy Bible Recovery Version (text-only edition) © 2022 Living Stream Ministry www.lsm.org</copyright>
+</request>
+      
+Input: https://baseurl/txo.php?String='Rom. 6:3-5; John 15:1, 4-5; 1 Cor. 6:17; Gal. 2:20; Rom. 12:2; 8:4'
+
+Output:
+
+<?xml version="1.0" encoding="utf-8" ?>
+<request>
+    <inputstring>'Rom. 6:3-5; John 15:1, 4-5; 1 Cor. 6:17; Gal. 2:20; Rom. 12:2; 8:4'</inputstring>
+    <detected>Rom. 6:3-5; John 15:1; John 15:4-5; 1 Cor. 6:17; Gal. 2:20; Rom. 12:2; Rom. 8:4.</detected>
+    <verses>
+        <verse>
+            <ref>Rom. 6:3</ref>
+            <text>Or are you ignorant that all of us who have been baptized into Christ Jesus have been baptized into His death?</text>
+        </verse>
+        <verse>
+            <ref>Rom. 6:4</ref>
+            <text>We have been buried therefore with Him through baptism into His death, in order that just as Christ was raised from the dead through the glory of the Father, so also we might walk in newness of life.</text>
+        </verse>
+        <verse>
+            <ref>Rom. 6:5</ref>
+            <text>For if we have grown together with [Him] in the likeness of His death, indeed we will also be [in the] [likeness] of His resurrection,</text>
+        </verse>
+        <verse>
+            <ref>John 15:1</ref>
+            <text>I am the true vine, and My Father is the husbandman.</text>
+        </verse>
+        <verse>
+            <ref>John 15:4</ref>
+            <text>Abide in Me and I in you. As the branch cannot bear fruit of itself unless it abides in the vine, so neither [can] you unless you abide in Me.</text>
+        </verse>
+        <verse>
+            <ref>John 15:5</ref>
+            <text>I am the vine; you are the branches. He who abides in Me and I in him, he bears much fruit; for apart from Me you can do nothing.</text>
+        </verse>
+        <verse>
+            <ref>1 Cor. 6:17</ref>
+            <text>But he who is joined to the Lord is one spirit.</text>
+        </verse>
+        <verse>
+            <ref>Gal. 2:20</ref>
+            <text>I am crucified with Christ; and [it is] no longer I [who] live, but [it is] Christ [who] lives in me; and the [life] which I now live in the flesh I live in faith, the [faith] of the Son of God, who loved me and gave Himself up for me.</text>
+        </verse>
+        <verse>
+            <ref>Rom. 12:2</ref>
+            <text>And do not be fashioned according to this age, but be transformed by the renewing of the mind that you may prove what the will of God is, that which is good and well pleasing and perfect.</text>
+        </verse>
+        <verse>
+            <ref>Rom. 8:4</ref>
+            <text>That the righteous requirement of the law might be fulfilled in us, who do not walk according to the flesh but according to the spirit.</text>
+        </verse>
+    </verses>
+    <message>    </message>
+    <copyright>Verses accessed from the Holy Bible Recovery Version (text-only edition) © 2022 Living Stream Ministry www.lsm.org</copyright>
+</request>
+      
+Input: https://baseurl/txo.php?String='John 1'
+
+Output:
+
+<?xml version="1.0" encoding="utf-8" ?>
+<request>
+    <inputstring>'John 1'</inputstring>
+    <detected>John 1.</detected>
+    <verses>
+        <verse>
+            <ref>John 1:1</ref>
+            <text>In the beginning was the Word, and the Word was with God, and the Word was God.</text>
+        </verse>
+        <verse>
+            <ref>John 1:2</ref>
+            <text>He was in the beginning with God.</text>
+        </verse>
+        <verse>
+            <ref>John 1:3</ref>
+            <text>All things came into being through Him, and apart from Him not one thing came into being which has come into being.</text>
+        </verse>
+        <verse>
+            <ref>John 1:4</ref>
+            <text>In Him was life, and the life was the light of men.</text>
+        </verse>
+        <verse>
+            <ref>John 1:5</ref>
+            <text>And the light shines in the darkness, and the darkness did not overcome it.</text>
+        </verse>
+        <verse>
+            <ref>John 1:6</ref>
+            <text>There came a man sent from God, whose name was John.</text>
+        </verse>
+        <verse>
+            <ref>John 1:7</ref>
+            <text>He came for a testimony that he might testify concerning the light, that all might believe through him.</text>
+        </verse>
+        <verse>
+            <ref>John 1:8</ref>
+            <text>He was not the light, but [came] that he might testify concerning the light.</text>
+        </verse>
+        <verse>
+            <ref>John 1:9</ref>
+            <text>[This] was the true light which, coming into the world, enlightens every man.</text>
+        </verse>
+        <verse>
+            <ref>John 1:10</ref>
+            <text>He was in the world, and the world came into being through Him, yet the world did not know Him.</text>
+        </verse>
+        <verse>
+            <ref>John 1:11</ref>
+            <text>He came to His own, yet those who were His own did not receive Him.</text>
+        </verse>
+        <verse>
+            <ref>John 1:12</ref>
+            <text>But as many as received Him, to them He gave the authority to become children of God, to those who believe into His name,</text>
+        </verse>
+        <verse>
+            <ref>John 1:13</ref>
+            <text>Who were begotten not of blood, nor of the will of the flesh, nor of the will of man, but of God.</text>
+        </verse>
+        <verse>
+            <ref>John 1:14</ref>
+            <text>And the Word became flesh and tabernacled among us (and we beheld His glory, glory as of the only Begotten from the Father), full of grace and reality.</text>
+        </verse>
+        <verse>
+            <ref>John 1:15</ref>
+            <text>John testified concerning Him and cried out, saying, This was He of whom I said, He who is coming after me has become ahead of me, because He was before me.</text>
+        </verse>
+        <verse>
+            <ref>John 1:16</ref>
+            <text>For of His fullness we have all received, and grace upon grace.</text>
+        </verse>
+        <verse>
+            <ref>John 1:17</ref>
+            <text>For the law was given through Moses; grace and reality came through Jesus Christ.</text>
+        </verse>
+        <verse>
+            <ref>John 1:18</ref>
+            <text>No one has ever seen God; the only begotten Son, who is in the bosom of the Father, He has declared [Him.]</text>
+        </verse>
+        <verse>
+            <ref>John 1:19</ref>
+            <text>And this is the testimony of John, when the Jews sent to him priests and Levites from Jerusalem to ask him, Who are you?</text>
+        </verse>
+        <verse>
+            <ref>John 1:20</ref>
+            <text>And he confessed and did not deny, and he confessed, I am not the Christ.</text>
+        </verse>
+        <verse>
+            <ref>John 1:21</ref>
+            <text>And they asked him, What then? Are you Elijah? And he said, I am not. Are you the Prophet? And he answered, No.</text>
+        </verse>
+        <verse>
+            <ref>John 1:22</ref>
+            <text>They said then to him, Who are you, that we may give an answer to those who sent us? What do you say about yourself?</text>
+        </verse>
+        <verse>
+            <ref>John 1:23</ref>
+            <text>He said, I am a voice of one crying in the wilderness, Make straight the way of the Lord! as Isaiah the prophet said.</text>
+        </verse>
+        <verse>
+            <ref>John 1:24</ref>
+            <text>And those who had been sent were of the Pharisees.</text>
+        </verse>
+        <verse>
+            <ref>John 1:25</ref>
+            <text>And they asked him and said to him, Why then are you baptizing if you are not the Christ nor Elijah nor the Prophet?</text>
+        </verse>
+        <verse>
+            <ref>John 1:26</ref>
+            <text>John answered them, saying, I baptize in water; [but] among you stands One whom you do not know,</text>
+        </verse>
+        <verse>
+            <ref>John 1:27</ref>
+            <text>He who is coming after me, the thong of whose sandal I am not worthy to untie.</text>
+        </verse>
+        <verse>
+            <ref>John 1:28</ref>
+            <text>These things took place in Bethany across the Jordan, where John was baptizing.</text>
+        </verse>
+        <verse>
+            <ref>John 1:29</ref>
+            <text>The next day he saw Jesus coming to him and said, Behold, the Lamb of God, who takes away the sin of the world!</text>
+        </verse>
+        <verse>
+            <ref>John 1:30</ref>
+            <text>This is He of whom I said, A man is coming after me who has become ahead of me, because He was before me.</text>
+        </verse>
+        <verse>
+            <ref>John 1:31</ref>
+            <text>And I did not know Him, but in order that He might be manifested to Israel, for this [reason] I came baptizing in water.</text>
+        </verse>
+        <verse>
+            <ref>John 1:32</ref>
+            <text>And John testified, saying, I beheld the Spirit descending as a dove out of heaven, and He abode upon Him.</text>
+        </verse>
+        <verse>
+            <ref>John 1:33</ref>
+            <text>And I did not know Him, but He who sent me to baptize in water, He said to me, He upon whom you see the Spirit descending and abiding upon Him, this is He who baptizes in the Holy Spirit.</text>
+        </verse>
+        <verse>
+            <ref>John 1:34</ref>
+            <text>And I have seen and have testified that this is the Son of God.</text>
+        </verse>
+        <verse>
+            <ref>John 1:35</ref>
+            <text>Again the next day John was standing with two of his disciples,</text>
+        </verse>
+        <verse>
+            <ref>John 1:36</ref>
+            <text>And looking at Jesus walking, he said, Behold, the Lamb of God!</text>
+        </verse>
+        <verse>
+            <ref>John 1:37</ref>
+            <text>And the two disciples heard him speak [this,] and they followed Jesus.</text>
+        </verse>
+        <verse>
+            <ref>John 1:38</ref>
+            <text>And Jesus, turning and beholding them following, said to them, What are you seeking? And they said to Him, Rabbi (which translated means Teacher), where are You staying?</text>
+        </verse>
+        <verse>
+            <ref>John 1:39</ref>
+            <text>He said to them, Come, and you will see. They went therefore and saw where He was staying, and they stayed with Him that day; it was about the tenth hour.</text>
+        </verse>
+        <verse>
+            <ref>John 1:40</ref>
+            <text>One of the two who heard [this] from John and followed Him was Andrew, Simon Peters brother.</text>
+        </verse>
+        <verse>
+            <ref>John 1:41</ref>
+            <text>He first found his own brother Simon and said to him, We have found the Messiah (which translated means Christ).</text>
+        </verse>
+        <verse>
+            <ref>John 1:42</ref>
+            <text>He led him to Jesus. Looking at him, Jesus said, You are Simon, the son of John; you shall be called Cephas (which is interpreted, Peter).</text>
+        </verse>
+        <verse>
+            <ref>John 1:43</ref>
+            <text>The next day He wanted to go forth into Galilee, and He found Philip. And Jesus said to him, Follow Me.</text>
+        </verse>
+        <verse>
+            <ref>John 1:44</ref>
+            <text>Now Philip was from Bethsaida, of the city of Andrew and Peter.</text>
+        </verse>
+        <verse>
+            <ref>John 1:45</ref>
+            <text>Philip found Nathanael and said to him, We have found Him of whom Moses in the law, and the prophets, wrote, Jesus, the son of Joseph, from Nazareth.</text>
+        </verse>
+        <verse>
+            <ref>John 1:46</ref>
+            <text>And Nathanael said to him, Can anything good be from Nazareth? Philip said to him, Come and see.</text>
+        </verse>
+        <verse>
+            <ref>John 1:47</ref>
+            <text>Jesus saw Nathanael coming to Him and said concerning him, Behold, truly an Israelite, in whom there is no guile!</text>
+        </verse>
+        <verse>
+            <ref>John 1:48</ref>
+            <text>Nathanael said to Him, How do You know me? Jesus answered and said to him, Before Philip called you, while you were under the fig tree, I saw you.</text>
+        </verse>
+        <verse>
+            <ref>John 1:49</ref>
+            <text>Nathanael answered Him, Rabbi, You are the Son of God; You are the King of Israel.</text>
+        </verse>
+        <verse>
+            <ref>John 1:50</ref>
+            <text>Jesus answered and said to him, [Is it] because I told you that I saw you under the fig tree [that] you believe? You shall see greater things than these.</text>
+        </verse>
+    </verses>
+    <message>You have exceeded 50 verses, which is the maximum number of verses sent per request. (You requested 51 verses)
+    </message>
+    <copyright>Verses accessed from the Holy Bible Recovery Version (text-only edition) © 2022 Living Stream Ministry www.lsm.org</copyright>
+</request>
+      
