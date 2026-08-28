@@ -2,17 +2,25 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import {
+  sliceChapterRows,
+  type ChapterSectionRange,
+} from "@/lib/bible/chapter-sections";
 import type {
   ChapterCell,
   ChapterMatrix,
   ChapterVersion,
   TranslationId,
+  VerseAnnotation,
 } from "@/lib/bible/types";
 
 interface ScriptureGridProps {
   matrix?: ChapterMatrix;
   loading: boolean;
   requestedVersions: readonly TranslationId[];
+  activePart: number;
+  ranges: readonly ChapterSectionRange[];
+  onPartChange: (part: number) => void;
   onRetry: () => void;
 }
 
@@ -20,11 +28,18 @@ export function ScriptureGrid({
   matrix,
   loading,
   requestedVersions,
+  activePart,
+  ranges,
+  onPartChange,
   onRetry,
 }: ScriptureGridProps) {
   const headerRef = useRef<HTMLTableSectionElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const stickyTrackRef = useRef<HTMLDivElement>(null);
+  const previousPartRef = useRef(activePart);
+  const renderedMatrixRef = useRef<ChapterMatrix | undefined>(undefined);
   const [showStickyVersions, setShowStickyVersions] = useState(false);
+  const [openAnnotation, setOpenAnnotation] = useState<string>();
 
   useEffect(() => {
     const header = headerRef.current;
@@ -48,6 +63,50 @@ export function ScriptureGrid({
     return () => observer.disconnect();
   }, [matrix]);
 
+  useEffect(() => {
+    if (!matrix) {
+      renderedMatrixRef.current = undefined;
+      previousPartRef.current = activePart;
+      return;
+    }
+    if (renderedMatrixRef.current !== matrix) {
+      renderedMatrixRef.current = matrix;
+      previousPartRef.current = activePart;
+      return;
+    }
+    if (previousPartRef.current === activePart) {
+      return;
+    }
+    previousPartRef.current = activePart;
+    setOpenAnnotation(undefined);
+    setShowStickyVersions(false);
+    if (scrollRef.current) {
+      scrollRef.current.scrollLeft = 0;
+    }
+    if (stickyTrackRef.current) {
+      stickyTrackRef.current.style.transform = "translateX(0px)";
+    }
+    const frame = window.requestAnimationFrame(() => {
+      const header = headerRef.current;
+      if (!header) {
+        return;
+      }
+      const toolbarBottom =
+        document.querySelector<HTMLElement>(".reader-toolbar")
+          ?.getBoundingClientRect().bottom ?? 0;
+      window.scrollTo({
+        top: Math.max(
+          0,
+          window.scrollY +
+            header.getBoundingClientRect().top -
+            toolbarBottom -
+            1,
+        ),
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activePart, matrix]);
+
   if (loading && !matrix) {
     return <ReaderSkeleton columns={requestedVersions.length} />;
   }
@@ -67,6 +126,12 @@ export function ScriptureGrid({
     "--reader-columns": matrix.versions.length,
   } as React.CSSProperties;
   const hasReadableColumn = matrix.versions.some((version) => !version.error);
+  const activeRange = ranges[activePart - 1];
+  const visibleRows = activeRange
+    ? sliceChapterRows(matrix.rows, activeRange)
+    : [];
+  const previousRange = ranges[activePart - 2];
+  const nextRange = ranges[activePart];
 
   return (
     <section
@@ -104,6 +169,7 @@ export function ScriptureGrid({
       <div
         className="scripture-scroll"
         data-testid="scripture-scroll"
+        ref={scrollRef}
         onScroll={(event) => {
           if (stickyTrackRef.current) {
             stickyTrackRef.current.style.transform =
@@ -130,7 +196,17 @@ export function ScriptureGrid({
             </tr>
           </thead>
           <tbody>
-            {matrix.rows.map((row) => (
+            {previousRange ? (
+              <SectionControlRow
+                colSpan={matrix.versions.length + 1}
+                destinationPart={activePart - 1}
+                direction="previous"
+                label={rangeLabel(matrix, previousRange)}
+                onPartChange={onPartChange}
+                position="top"
+              />
+            ) : null}
+            {visibleRows.map((row) => (
               <tr key={row.verse} data-testid={`verse-row-${row.verse}`}>
                 <th className="verse-number" scope="row">
                   {row.verse}
@@ -138,14 +214,39 @@ export function ScriptureGrid({
                 {matrix.versions.map((version) => (
                   <VerseCell
                     key={version.translation.id}
+                    annotation={row.annotations?.[version.translation.id]}
+                    annotationId={`${matrix.reference.book}-${matrix.reference.chapter}-part-${activePart}-${version.translation.id}-${row.verse}`}
                     cells={row.cells[version.translation.id]}
                     direction={version.translation.direction}
                     language={version.translation.language}
                     hasError={Boolean(version.error)}
+                    isAnnotationOpen={
+                      openAnnotation ===
+                      `${matrix.reference.book}-${matrix.reference.chapter}-part-${activePart}-${version.translation.id}-${row.verse}`
+                    }
+                    onCloseAnnotation={() => setOpenAnnotation(undefined)}
+                    onToggleAnnotation={() =>
+                      setOpenAnnotation((current) =>
+                        current ===
+                        `${matrix.reference.book}-${matrix.reference.chapter}-part-${activePart}-${version.translation.id}-${row.verse}`
+                          ? undefined
+                          : `${matrix.reference.book}-${matrix.reference.chapter}-part-${activePart}-${version.translation.id}-${row.verse}`,
+                      )
+                    }
                   />
                 ))}
               </tr>
             ))}
+            {nextRange ? (
+              <SectionControlRow
+                colSpan={matrix.versions.length + 1}
+                destinationPart={activePart + 1}
+                direction="next"
+                label={rangeLabel(matrix, nextRange)}
+                onPartChange={onPartChange}
+                position="bottom"
+              />
+            ) : null}
             {!hasReadableColumn || matrix.rows.length === 0 ? (
               <tr>
                 <th className="verse-number" scope="row">
@@ -192,6 +293,42 @@ export function ScriptureGrid({
   );
 }
 
+function SectionControlRow({
+  colSpan,
+  destinationPart,
+  direction,
+  label,
+  onPartChange,
+  position,
+}: {
+  colSpan: number;
+  destinationPart: number;
+  direction: "previous" | "next";
+  label: string;
+  onPartChange: (part: number) => void;
+  position: "top" | "bottom";
+}) {
+  const action = direction === "previous" ? "Previous section" : "Next section";
+  return (
+    <tr
+      className={`section-control-row section-control-${position}`}
+      data-testid={`${position}-section-control`}
+    >
+      <td className="section-control-cell" colSpan={colSpan}>
+        <button
+          className="section-control-button"
+          type="button"
+          onClick={() => onPartChange(destinationPart)}
+        >
+          {direction === "previous" ? <span aria-hidden="true">←</span> : null}
+          <span>{action} · {label}</span>
+          {direction === "next" ? <span aria-hidden="true">→</span> : null}
+        </button>
+      </td>
+    </tr>
+  );
+}
+
 function VersionHeading({
   version,
   onRetry,
@@ -225,15 +362,25 @@ function VersionHeading({
 }
 
 function VerseCell({
+  annotation,
+  annotationId,
   cells,
   direction,
   language,
   hasError,
+  isAnnotationOpen,
+  onCloseAnnotation,
+  onToggleAnnotation,
 }: {
+  annotation: VerseAnnotation | undefined;
+  annotationId: string;
   cells: readonly ChapterCell[] | undefined;
   direction: "ltr" | "rtl";
   language: "English" | "Hebrew" | "Greek" | "Original";
   hasError: boolean;
+  isAnnotationOpen: boolean;
+  onCloseAnnotation: () => void;
+  onToggleAnnotation: () => void;
 }) {
   if (cells?.length && cells.every((cell) => !cell.display)) {
     return null;
@@ -247,21 +394,142 @@ function VerseCell({
       lang={language === "Hebrew" ? "he" : language === "Greek" ? "el" : "en"}
       rowSpan={rowSpan}
     >
-      {visibleCells.map((cell, index) => (
-        <p
-          className="verse-text"
-          key={`${cell.canonicalSlots.map(({ verse }) => verse).join("-")}-${index}`}
-          title={sourceLabel(cell)}
-        >
-          {cell.text}
-        </p>
-      ))}
-      {!hasError && visibleCells.length === 0 ? (
+      {visibleCells.map((cell, index) =>
+        cell.continuation ? (
+          <span
+            aria-label="Text continues from previous section"
+            className="continuation-placeholder"
+            key={`${cell.canonicalSlots.map(({ verse }) => verse).join("-")}-${index}`}
+          >
+            Continued
+          </span>
+        ) : (
+          <p
+            className="verse-text"
+            key={`${cell.canonicalSlots.map(({ verse }) => verse).join("-")}-${index}`}
+            title={sourceLabel(cell)}
+          >
+            {cell.text}
+          </p>
+        ),
+      )}
+      {!hasError && visibleCells.length > 0 && annotation ? (
+        <OmissionNote
+          annotation={annotation}
+          annotationId={annotationId}
+          className="included-omission-note"
+          isOpen={isAnnotationOpen}
+          label="Why this verse has a manuscript note"
+          onClose={onCloseAnnotation}
+          onToggle={onToggleAnnotation}
+        />
+      ) : null}
+      {!hasError && visibleCells.length === 0 && annotation ? (
+        <OmissionReading
+          annotation={annotation}
+          annotationId={annotationId}
+          isOpen={isAnnotationOpen}
+          onClose={onCloseAnnotation}
+          onToggle={onToggleAnnotation}
+        />
+      ) : null}
+      {!hasError && visibleCells.length === 0 && !annotation ? (
         <span className="missing-verse" aria-label="No corresponding verse">
           —
         </span>
       ) : null}
     </td>
+  );
+}
+
+function OmissionReading({
+  annotation,
+  annotationId,
+  isOpen,
+  onClose,
+  onToggle,
+}: {
+  annotation: VerseAnnotation;
+  annotationId: string;
+  isOpen: boolean;
+  onClose: () => void;
+  onToggle: () => void;
+}) {
+  return (
+    <span
+      className="omission-reading"
+      dir={annotation.direction}
+      lang={annotation.language === "Hebrew" ? "he" : "el"}
+    >
+      <span className="verse-text alternate-verse-text">
+        {annotation.alternateText}
+      </span>
+      <span className="omission-source">
+        <a href={annotation.sourceUrl} rel="noreferrer" target="_blank">
+          {annotation.sourceLabel}
+        </a>
+        <OmissionNote
+          annotation={annotation}
+          annotationId={annotationId}
+          isOpen={isOpen}
+          label={`Why this alternate ${annotation.language} text is shown`}
+          onClose={onClose}
+          onToggle={onToggle}
+        />
+      </span>
+    </span>
+  );
+}
+
+function OmissionNote({
+  annotation,
+  annotationId,
+  className,
+  isOpen,
+  label,
+  onClose,
+  onToggle,
+}: {
+  annotation: VerseAnnotation;
+  annotationId: string;
+  className?: string;
+  isOpen: boolean;
+  label: string;
+  onClose: () => void;
+  onToggle: () => void;
+}) {
+  const tooltipId = `omission-note-${annotationId}`;
+  return (
+    <span
+      className={`omission-note ${className ?? ""}`}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          onClose();
+        }
+      }}
+    >
+      <button
+        type="button"
+        className="omission-note-button"
+        aria-expanded={isOpen}
+        aria-describedby={isOpen ? tooltipId : undefined}
+        aria-label={label}
+        onClick={onToggle}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            onClose();
+          }
+        }}
+      >
+        *
+      </button>
+      {isOpen ? (
+        <span className="omission-tooltip" id={tooltipId} role="tooltip">
+          <span>{annotation.explanation}</span>
+          <span>{annotation.provenance}</span>
+        </span>
+      ) : null}
+    </span>
   );
 }
 
@@ -316,4 +584,13 @@ function sourceLabel(cell: ChapterCell): string {
       `${book} ${chapter}:${verse}${part ?? ""}`,
     )
     .join(", ");
+}
+
+function rangeLabel(
+  matrix: ChapterMatrix,
+  range: ChapterSectionRange,
+): string {
+  const first = matrix.rows[range.start]?.verse;
+  const last = matrix.rows[range.end - 1]?.verse;
+  return first === last ? `Verse ${first}` : `Verses ${first}–${last}`;
 }

@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   parseGreekTsv,
   parseHebrewBook,
+  parseScrivenerBook,
   parseVerseMap,
+  transliterateScrivenerGreek,
 } from "./original-texts";
 
 describe("original-language parsing", () => {
@@ -91,6 +93,38 @@ describe("original-language parsing", () => {
     expect(verse.text).toBe("“Βίβλος,”");
     expect(verse.mapping.canonicalSlots).toEqual([
       { book: "MAT", chapter: 1, verse: 1 },
+    ]);
+  });
+
+  it("transliterates Robinson ASCII Greek without changing whitespace", () => {
+    expect(
+      transliterateScrivenerGreek(
+        "a b g d e z h y i k l m n x o p r s/v t u f c q w",
+      ),
+    ).toBe("α β γ δ ε ζ η θ ι κ λ μ ν ξ ο π ρ σ/ς τ υ φ χ ψ ω");
+    expect(transliterateScrivenerGreek("a  b\nsv")).toBe("α  β\nσς");
+  });
+
+  it("parses Scrivener filenames, wrapped lines, and verse boundaries", () => {
+    const verses = parseScrivenerBook(
+      "MR.SCV",
+      [
+        "  11:25 [EUAGGELION TO KATA MARKON]",
+        "      kai  otan sthkhte",
+        "  11:26 ei de umeiv ouk afiete",
+        "      oude o pathr umwn",
+      ].join("\n"),
+    );
+
+    expect(verses).toEqual([
+      {
+        reference: { book: "MRK", chapter: 11, verse: 25 },
+        text: "και  οταν στηκητε",
+      },
+      {
+        reference: { book: "MRK", chapter: 11, verse: 26 },
+        text: "ει δε υμεις ουκ αφιετε ουδε ο πατηρ υμων",
+      },
     ]);
   });
 });

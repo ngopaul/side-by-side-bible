@@ -7,6 +7,9 @@ import type {
 
 type UnknownRecord = Record<string, unknown>;
 
+export const ESV_COPYRIGHT =
+  "Scripture quotations are from The ESV® Bible (The Holy Bible, English Standard Version®), © 2001 by Crossway, a publishing ministry of Good News Publishers. Used by permission. All rights reserved.";
+
 export function parseEsvResponse(
   value: unknown,
   reference: ChapterReference,
@@ -26,10 +29,7 @@ export function parseEsvResponse(
     verses,
     attribution: {
       label: "ESV",
-      text:
-        typeof record?.copyright === "string"
-          ? record.copyright
-          : extractShortCopyright(passages),
+      text: ESV_COPYRIGHT,
     },
   };
 }
@@ -38,7 +38,7 @@ export function parseEsvPassageHtml(
   html: string,
   reference: ChapterReference,
 ): NormalizedVerse[] {
-  const content = removeShortCopyright(html);
+  const content = removeCopyright(html);
   const marker =
     /<([a-z][\w:-]*)\b[^>]*\bid=["']v\d{2}(\d{3})(\d{3})-\d+["'][^>]*>[\s\S]*?<\/\1>/giu;
   const matches = [...content.matchAll(marker)].filter(
@@ -72,18 +72,7 @@ export function parseEsvPassageHtml(
   });
 }
 
-function extractShortCopyright(passages: readonly string[]): string {
-  for (const passage of passages) {
-    for (const match of passage.matchAll(/<p\b[^>]*>[\s\S]*?<\/p>/giu)) {
-      if (/\bclass=["'][^"']*\bcopyright\b[^"']*["']/iu.test(match[0])) {
-        return htmlToText(match[0]);
-      }
-    }
-  }
-  return "";
-}
-
-function removeShortCopyright(html: string): string {
+function removeCopyright(html: string): string {
   return html.replace(
     /<p\b[^>]*>[\s\S]*?<\/p>/giu,
     (paragraph) =>

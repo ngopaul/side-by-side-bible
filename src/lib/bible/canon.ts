@@ -78,12 +78,140 @@ export const BIBLE_BOOKS = [
 export const MAX_SELECTED_VERSIONS = 5;
 
 export const TRANSLATIONS = [
-  { id: "nasb", abbreviation: "NASB", name: "New American Standard Bible", language: "English", provider: "api-bible", availability: ["old", "new"], direction: "ltr" },
-  { id: "nkjv", abbreviation: "NKJV", name: "New King James Version", language: "English", provider: "api-bible", availability: ["old", "new"], direction: "ltr" },
-  { id: "niv", abbreviation: "NIV", name: "New International Version", language: "English", provider: "api-bible", availability: ["old", "new"], direction: "ltr" },
-  { id: "rcv", abbreviation: "RcV", name: "Recovery Version", language: "English", provider: "lsm", availability: ["old", "new"], direction: "ltr" },
-  { id: "esv", abbreviation: "ESV", name: "English Standard Version", language: "English", provider: "esv", availability: ["old", "new"], direction: "ltr" },
-  { id: "original", abbreviation: "Original", name: "Original Languages", language: "Original", provider: "original", availability: ["old", "new"], direction: "ltr" },
+  {
+    id: "nasb",
+    abbreviation: "NASB",
+    name: "New American Standard Bible",
+    language: "English",
+    provider: "api-bible",
+    availability: ["old", "new"],
+    direction: "ltr",
+    profile: {
+      approach: "Formal equivalence · Word-for-word",
+      publication: "NASB 2020",
+      description:
+        "Prioritizes the wording, grammar, and structure of the original languages while using contemporary English.",
+      infoLinks: [
+        {
+          label: "Lockman Foundation",
+          url: "https://www.lockman.org/new-american-standard-bible-nasb/about-nasb-2020/",
+        },
+      ],
+    },
+  },
+  {
+    id: "nkjv",
+    abbreviation: "NKJV",
+    name: "New King James Version",
+    language: "English",
+    provider: "api-bible",
+    availability: ["old", "new"],
+    direction: "ltr",
+    profile: {
+      approach: "Formal equivalence · Word-for-word",
+      publication: "Complete Bible · 1982",
+      description:
+        "Modernizes the King James tradition while retaining its traditional Hebrew and Greek textual basis and close verbal correspondence.",
+      infoLinks: [
+        {
+          label: "Thomas Nelson",
+          url: "https://www.thomasnelsonbibles.com/nkjv-bible/",
+        },
+      ],
+    },
+  },
+  {
+    id: "niv",
+    abbreviation: "NIV",
+    name: "New International Version",
+    language: "English",
+    provider: "api-bible",
+    availability: ["old", "new"],
+    direction: "ltr",
+    profile: {
+      approach: "Balanced · Meaning and form",
+      publication: "Current edition · 2011",
+      description:
+        "Balances transparency to the original text with clear, natural contemporary English for reading and study.",
+      infoLinks: [
+        {
+          label: "Biblica",
+          url: "https://www.biblica.com/niv-bible/niv-bible-translation-philosophy/",
+        },
+      ],
+    },
+  },
+  {
+    id: "rcv",
+    abbreviation: "RcV",
+    name: "Recovery Version",
+    language: "English",
+    provider: "lsm",
+    availability: ["old", "new"],
+    direction: "ltr",
+    profile: {
+      approach: "Literal · Study-oriented",
+      publication: "Complete Bible · 1999",
+      description:
+        "Seeks a close rendering of the Hebrew and Greek for careful study, sometimes preferring precision over ease of reading.",
+      infoLinks: [
+        {
+          label: "Living Stream Ministry",
+          url: "https://www.recoveryversion.bible/translation.html",
+        },
+      ],
+    },
+  },
+  {
+    id: "esv",
+    abbreviation: "ESV",
+    name: "English Standard Version",
+    language: "English",
+    provider: "esv",
+    availability: ["old", "new"],
+    direction: "ltr",
+    profile: {
+      approach: "Essentially literal · Word-for-word",
+      publication: "First published · 2001",
+      description:
+        "Emphasizes correspondence to the original wording and literary style while accounting for natural English grammar and idiom.",
+      infoLinks: [
+        {
+          label: "Crossway",
+          url: "https://www.crossway.org/articles/the-heart-behind-the-esv/",
+        },
+      ],
+    },
+  },
+  {
+    id: "original",
+    abbreviation: "Original",
+    name: "Original Languages",
+    language: "Original",
+    provider: "original",
+    availability: ["old", "new"],
+    direction: "ltr",
+    profile: {
+      approach: "Source texts · Not an English translation",
+      publication: "OSHB/WLC · OGNT v3 (2018)",
+      description:
+        "Displays the Westminster Leningrad Codex in the Old Testament and the NA-equivalent Open Greek New Testament in the New Testament.",
+      infoLinks: [
+        {
+          label: "Open Scriptures Hebrew Bible",
+          url: "https://github.com/openscriptures/morphhb",
+        },
+        {
+          label: "Open Greek New Testament",
+          url: "https://github.com/eliranwong/OpenGNT",
+        },
+        {
+          label: "Scrivener 1894 Textus Receptus alternates",
+          url: "https://github.com/byztxt/greektext-scrivener",
+        },
+      ],
+    },
+  },
 ] as const satisfies readonly TranslationMetadata[];
 
 const booksById = new Map<BookId, BibleBook>(

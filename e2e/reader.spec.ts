@@ -26,7 +26,9 @@ const translations = {
 test("keeps rows aligned and reveals compact headers after scrolling", async ({
   page,
 }) => {
-  await mockChapters(page);
+  await page.route("**/api/bible/chapter?**", async (route) => {
+    await fulfillChapter(route, { rowCount: 32 });
+  });
   await page.goto("/read/JHN/1?versions=esv,nasb");
 
   await expect(page.getByRole("heading", { name: "John 1" })).toBeVisible();
@@ -74,6 +76,12 @@ test("persists translation and canonical-book settings", async ({ page }) => {
   await page.goto(
     `/settings?returnTo=${encodeURIComponent("/read/JHN/3?versions=esv,nasb")}`,
   );
+  const nasbCard = page.locator(".choice-card").filter({ hasText: "NASB" });
+  await expect(nasbCard).toContainText("Formal equivalence · Word-for-word");
+  await expect(nasbCard).toContainText("NASB 2020");
+  await expect(nasbCard).toContainText(
+    "Prioritizes the wording, grammar, and structure",
+  );
   await page.getByRole("checkbox", { name: /^NASB /u }).uncheck();
   await expect(page.getByText("Hebrew (OT) / Greek (NT)")).toBeVisible();
   await page.getByRole("checkbox", { name: /^Original /u }).check();
@@ -99,11 +107,42 @@ test("persists translation and canonical-book settings", async ({ page }) => {
   await expect(page.getByRole("option", { name: "Genesis" })).toHaveCount(0);
 });
 
+test("explains each translation on the about page", async ({ page }) => {
+  await page.goto("/about");
+
+  await expect(
+    page.getByRole("heading", { name: "Translation guide" }),
+  ).toBeVisible();
+  await expect(page.locator(".translation-guide article")).toHaveCount(6);
+  const esv = page.locator(".translation-guide article").filter({
+    hasText: "English Standard Version",
+  });
+  await expect(esv).toContainText("Essentially literal · Word-for-word");
+  await expect(esv).toContainText("First published · 2001");
+  const original = page.locator(".translation-guide article").filter({
+    has: page.getByText("Original Languages", { exact: true }),
+  });
+  await expect(original.getByRole("link")).toHaveCount(3);
+  await expect(
+    original.getByRole("link", { name: "Open Scriptures Hebrew Bible" }),
+  ).toBeVisible();
+  await expect(
+    original.getByRole("link", { name: "Open Greek New Testament" }),
+  ).toBeVisible();
+  await expect(
+    original.getByRole("link", {
+      name: "Scrivener 1894 Textus Receptus alternates",
+    }),
+  ).toBeVisible();
+});
+
 test("preserves merged cells, RTL text, attribution, and narrow overflow", async ({
   page,
 }) => {
-  await mockChapters(page);
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route("**/api/bible/chapter?**", async (route) => {
+    await fulfillChapter(route, { rowCount: 32 });
+  });
+  await page.setViewportSize({ width: 390, height: 500 });
   await page.goto("/read/GEN/1?versions=esv,original,nasb");
 
   const scroll = page.getByTestId("scripture-scroll");
@@ -156,6 +195,144 @@ test("fits two translation columns on a narrow phone", async ({ page }) => {
   ).toBe(true);
 });
 
+test("paginates even chapters with URL history and no section refetch", async ({
+  page,
+}) => {
+  let requests = 0;
+  await page.route("**/api/bible/chapter?**", async (route) => {
+    requests += 1;
+    await fulfillChapter(route, { rowCount: 12 });
+  });
+  await page.setViewportSize({ width: 390, height: 500 });
+  await page.goto("/read/JHN/1?versions=esv,original,nasb");
+
+  const rows = page.locator('[data-testid^="verse-row-"]');
+  await expect(rows).toHaveCount(6);
+  await expect(page.getByTestId("top-section-control")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Next section · Verses 7–12" }),
+  ).toBeVisible();
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+
+  const scroll = page.getByTestId("scripture-scroll");
+  await scroll.evaluate((element) => {
+    element.scrollLeft = 80;
+    element.dispatchEvent(new Event("scroll"));
+  });
+  await page.getByRole("button", { name: "Next section · Verses 7–12" }).click();
+
+  await expect(page).toHaveURL(
+    /\/read\/JHN\/1\?versions=esv,original,nasb&part=2$/,
+  );
+  await expect(rows).toHaveCount(6);
+  await expect(page.getByTestId("verse-row-1")).toHaveCount(0);
+  await expect(page.getByTestId("verse-row-7")).toBeVisible();
+  await expect(page.getByTestId("bottom-section-control")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Previous section · Verses 1–6" }),
+  ).toBeVisible();
+  await expect.poll(() => scroll.evaluate((element) => element.scrollLeft)).toBe(0);
+  const rowTops = await page
+    .getByTestId("verse-row-7")
+    .locator("td")
+    .evaluateAll((cells) => cells.map((cell) => cell.getBoundingClientRect().top));
+  expect(new Set(rowTops).size).toBe(1);
+  const [toolbarBottom, headerTop] = await Promise.all([
+    page.getByTestId("reader-toolbar").evaluate(
+      (toolbar) => toolbar.getBoundingClientRect().bottom,
+    ),
+    page.locator(".scripture-table thead").evaluate(
+      (header) => header.getBoundingClientRect().top,
+    ),
+  ]);
+  expect(Math.abs(toolbarBottom - headerTop)).toBeLessThanOrEqual(2);
+  await expect(page.getByTestId("sticky-version-bar")).not.toHaveClass(
+    /visible/u,
+  );
+  expect(requests).toBe(1);
+
+  await page.goBack();
+  await expect(page).toHaveURL(
+    /\/read\/JHN\/1\?versions=esv,original,nasb$/,
+  );
+  await expect(page.getByTestId("verse-row-1")).toBeVisible();
+  await page.goForward();
+  await expect(page).toHaveURL(/&part=2$/);
+  await expect(page.getByTestId("verse-row-7")).toBeVisible();
+  expect(requests).toBe(1);
+
+  await page.getByRole("link", { name: "Next chapter" }).click();
+  await expect(page).toHaveURL(
+    /\/read\/JHN\/2\?versions=esv,original,nasb$/,
+  );
+  await expect(page.getByTestId("verse-row-1")).toBeVisible();
+});
+
+test("renders three balanced sections for odd chapters", async ({ page }) => {
+  await page.route("**/api/bible/chapter?**", async (route) => {
+    await fulfillChapter(route, { rowCount: 25 });
+  });
+  await page.goto("/read/JHN/1?versions=esv,nasb");
+
+  const rows = page.locator('[data-testid^="verse-row-"]');
+  await expect(rows).toHaveCount(9);
+  await expect(
+    page.getByRole("button", { name: "Next section · Verses 10–17" }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Next section · Verses 10–17" }).click();
+  await expect(page).toHaveURL(/&part=2$/);
+  await expect(rows).toHaveCount(8);
+  await expect(page.getByTestId("verse-row-1")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Previous section · Verses 1–9" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Next section · Verses 18–25" }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Next section · Verses 18–25" }).click();
+  await expect(page).toHaveURL(/&part=3$/);
+  await expect(rows).toHaveCount(8);
+  await expect(page.getByTestId("verse-row-18")).toBeVisible();
+  await expect(page.getByTestId("bottom-section-control")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Previous section · Verses 10–17" }),
+  ).toBeVisible();
+});
+
+test("canonicalizes an out-of-range part without appending history", async ({
+  page,
+}) => {
+  await mockChapters(page);
+  await page.goto("/about");
+  await page.goto("/read/JHN/1?versions=esv,nasb&part=99");
+
+  await expect(page).toHaveURL(/versions=esv,nasb&part=2$/);
+  await expect(page.getByTestId("verse-row-7")).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/about$/);
+});
+
+test("normalizes merged cells split by a section boundary", async ({ page }) => {
+  await page.route("**/api/bible/chapter?**", async (route) => {
+    await fulfillChapter(route, { boundaryMerge: true, rowCount: 12 });
+  });
+  await page.goto("/read/JHN/1?versions=esv,nasb");
+
+  const merged = page.getByText("Merged ESV verses 6–7", { exact: true });
+  await expect(merged).toHaveCount(1);
+  await expect(merged.locator("..")).toHaveAttribute("rowspan", "1");
+  await page.getByRole("button", { name: "Next section · Verses 7–12" }).click();
+
+  await expect(merged).toHaveCount(0);
+  const continuationRow = page.getByTestId("verse-row-7");
+  await expect(
+    continuationRow.getByLabel("Text continues from previous section"),
+  ).toContainText("Continued");
+  await expect(continuationRow.locator("td")).toHaveCount(2);
+});
+
 test("migrates legacy original-language URL selections", async ({ page }) => {
   await mockChapters(page);
   await page.goto("/read/JHN/1?versions=hebrew,greek,esv");
@@ -165,6 +342,56 @@ test("migrates legacy original-language URL selections", async ({ page }) => {
   await expect(
     page.locator('.version-heading[data-translation="original"]'),
   ).toContainText("OGNT");
+});
+
+test("shows alternate original text with an accessible omission note", async ({
+  page,
+}) => {
+  await page.route("**/api/bible/chapter?**", async (route) => {
+    await fulfillChapter(route, { originalOmission: true });
+  });
+  await page.goto("/read/MRK/11?versions=rcv,original&part=2");
+
+  const row = page.getByTestId("verse-row-26");
+  await expect(
+    row.getByText("ει δε υμεις ουκ αφιετε", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    row.getByRole("link", { name: "Scrivener 1894 Textus Receptus" }),
+  ).toBeVisible();
+  const note = row.getByRole("button", {
+    name: "Why this alternate Greek text is shown",
+  });
+  await expect(note).toHaveAttribute("aria-expanded", "false");
+  await note.click();
+  await expect(note).toHaveAttribute("aria-expanded", "true");
+  await expect(row.getByRole("tooltip")).toContainText(
+    "Some manuscripts omit this verse.",
+  );
+  await expect(row.getByRole("tooltip")).toContainText(
+    "Alternate Greek: Scrivener 1894 Textus Receptus",
+  );
+  await note.press("Escape");
+  await expect(row.getByRole("tooltip")).toHaveCount(0);
+  const includedNote = row.locator("td").first().getByRole("button", {
+    name: "Why this verse has a manuscript note",
+  });
+  await includedNote.click();
+  await expect(row.locator("td").first().getByRole("tooltip")).toContainText(
+    "Some manuscripts omit this verse.",
+  );
+  await page.getByRole("button", {
+    name: "Previous section · Verses 1–13",
+  }).click();
+  await expect(page).toHaveURL(/&part=1$/);
+  await expect(page.getByTestId("verse-row-1")).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/&part=2$/);
+  await expect(
+    page.getByTestId("verse-row-26").locator("td").first().getByRole("button", {
+      name: "Why this verse has a manuscript note",
+    }),
+  ).toHaveAttribute("aria-expanded", "false");
 });
 
 test("shows isolated column errors and retries retryable failures", async ({
@@ -193,7 +420,11 @@ test("shows isolated column errors and retries retryable failures", async ({
 test("uses URL versions and reports each unique FUMS display once", async ({
   page,
 }) => {
-  await mockChapters(page);
+  let chapterRequests = 0;
+  await page.route("**/api/bible/chapter?**", async (route) => {
+    chapterRequests += 1;
+    await fulfillChapter(route);
+  });
   const reports: unknown[] = [];
   await page.route("**/api/bible/fums", async (route) => {
     reports.push(route.request().postDataJSON());
@@ -207,6 +438,12 @@ test("uses URL versions and reports each unique FUMS display once", async ({
   expect(reports[0]).toMatchObject({
     token: "signed-token",
   });
+  await page.getByRole("button", { name: "Next section · Verses 7–12" }).click();
+  await page.getByRole("button", {
+    name: "Previous section · Verses 1–6",
+  }).click();
+  await expect.poll(() => reports.length).toBe(1);
+  expect(chapterRequests).toBe(1);
 });
 
 async function mockChapters(page: Page) {
@@ -217,7 +454,12 @@ async function mockChapters(page: Page) {
 
 async function fulfillChapter(
   route: Route,
-  options: { nasbError?: boolean } = {},
+  options: {
+    boundaryMerge?: boolean;
+    nasbError?: boolean;
+    originalOmission?: boolean;
+    rowCount?: number;
+  } = {},
 ) {
   const url = new URL(route.request().url());
   const book = url.searchParams.get("book") ?? "JHN";
@@ -249,15 +491,36 @@ async function fulfillChapter(
         }
       : {}),
   }));
-  const rows = Array.from({ length: 12 }, (_, index) => index + 1).map((verse) => ({
+  const rows = Array.from(
+    { length: options.rowCount ?? (options.originalOmission ? 26 : 12) },
+    (_, index) => index + 1,
+  ).map((verse) => ({
     verse,
     cells: Object.fromEntries(
       selected
-        .filter((id) => !(id === "nasb" && options.nasbError))
+        .filter(
+          (id) =>
+            !(id === "nasb" && options.nasbError) &&
+            !(id === "original" && options.originalOmission && verse === 26),
+        )
         .map((id) => [
           id,
           [
-            id === "esv" && book === "GEN" && verse <= 2
+            id === "esv" && options.boundaryMerge && verse >= 6 && verse <= 7
+              ? {
+                  translation: id,
+                  text: "Merged ESV verses 6–7",
+                  sourceReferences: [
+                    { source: "mock", book, chapter, verse: 6 },
+                  ],
+                  canonicalSlots: [
+                    { book, chapter, verse: 6 },
+                    { book, chapter, verse: 7 },
+                  ],
+                  display: verse === 6,
+                  rowSpan: 2,
+                }
+              : id === "esv" && book === "GEN" && verse <= 2
               ? {
                   translation: id,
                   text: "Merged ESV verses 1–2",
@@ -287,6 +550,34 @@ async function fulfillChapter(
           ],
         ]),
     ),
+    ...(options.originalOmission && verse === 26
+      ? {
+          annotations: {
+            rcv: {
+              type: "manuscript-omission",
+              alternateText: "ει δε υμεις ουκ αφιετε",
+              language: "Greek",
+              direction: "ltr",
+              sourceLabel: "Scrivener 1894 Textus Receptus",
+              sourceUrl: "https://github.com/byztxt/greektext-scrivener",
+              license: "Public Domain",
+              explanation: "Some manuscripts omit this verse.",
+              provenance: "Alternate Greek: Scrivener 1894 Textus Receptus",
+            },
+            original: {
+              type: "manuscript-omission",
+              alternateText: "ει δε υμεις ουκ αφιετε",
+              language: "Greek",
+              direction: "ltr",
+              sourceLabel: "Scrivener 1894 Textus Receptus",
+              sourceUrl: "https://github.com/byztxt/greektext-scrivener",
+              license: "Public Domain",
+              explanation: "Some manuscripts omit this verse.",
+              provenance: "Alternate Greek: Scrivener 1894 Textus Receptus",
+            },
+          },
+        }
+      : {}),
   }));
   await route.fulfill({
     contentType: "application/json",

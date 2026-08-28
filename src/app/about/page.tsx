@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { TRANSLATIONS } from "@/lib/bible/canon";
+
 export default function AboutPage() {
   return (
     <main className="site-page">
@@ -24,6 +26,42 @@ export default function AboutPage() {
         </div>
 
         <section>
+          <h2>Translation guide</h2>
+          <p>
+            Translation approaches describe priorities rather than strict
+            categories. Every translation balances precision, meaning, and
+            readable English.
+          </p>
+          <div className="translation-guide">
+            {TRANSLATIONS.map((translation) => (
+              <article key={translation.id}>
+                <div className="translation-guide-heading">
+                  <strong>{translation.abbreviation}</strong>
+                  <span>{translation.name}</span>
+                </div>
+                <div className="translation-guide-facts">
+                  <span>{translation.profile.approach}</span>
+                  <span>{translation.profile.publication}</span>
+                </div>
+                <p>{translation.profile.description}</p>
+                <div className="translation-guide-links">
+                  {translation.profile.infoLinks.map((link) => (
+                    <a
+                      href={link.url}
+                      key={link.url}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      {link.label}
+                    </a>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section>
           <h2>Text sources</h2>
           <p>
             English text is supplied at reading time by API.Bible, the ESV API,
@@ -33,7 +71,9 @@ export default function AboutPage() {
           <p>
             The Original selection displays Hebrew from the Open Scriptures
             Hebrew Bible in the Old Testament and Greek from the Open Greek New
-            Testament in the New Testament.
+            Testament in the New Testament. Clearly labeled alternate readings
+            fill manuscript omissions without being presented as part of those
+            base texts.
           </p>
           <ul className="source-list">
             <li>
@@ -65,6 +105,14 @@ export default function AboutPage() {
                 Open Greek New Testament
               </a>
               <span>OGNT by Eliran Wong, licensed CC BY-SA 4.0.</span>
+            </li>
+            <li>
+              <a href="https://github.com/byztxt/greektext-scrivener" rel="noreferrer" target="_blank">
+                Scrivener 1894 Textus Receptus
+              </a>
+              <span>
+                Public-domain alternate Greek for verses absent from OGNT.
+              </span>
             </li>
           </ul>
         </section>

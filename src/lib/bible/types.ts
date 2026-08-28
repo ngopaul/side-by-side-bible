@@ -122,6 +122,16 @@ export type TranslationProvider =
   | "lsm"
   | "original";
 
+export interface TranslationProfile {
+  approach: string;
+  publication: string;
+  description: string;
+  infoLinks: readonly {
+    label: string;
+    url: string;
+  }[];
+}
+
 export interface TranslationMetadata {
   id: TranslationId;
   abbreviation: string;
@@ -130,6 +140,7 @@ export interface TranslationMetadata {
   provider: TranslationProvider;
   availability: readonly Testament[];
   direction: "ltr" | "rtl";
+  profile: TranslationProfile;
 }
 
 export interface Attribution {
@@ -153,6 +164,20 @@ export interface FumsReport {
   token: string;
   endpoint: "/api/bible/fums";
 }
+
+export interface ManuscriptOmissionAnnotation {
+  type: "manuscript-omission";
+  alternateText: string;
+  language: "Greek" | "Hebrew";
+  direction: "ltr" | "rtl";
+  sourceLabel: string;
+  sourceUrl: string;
+  license: string;
+  explanation: string;
+  provenance: string;
+}
+
+export type VerseAnnotation = ManuscriptOmissionAnnotation;
 
 export type BibleErrorCode =
   | "invalid-reference"
@@ -184,6 +209,9 @@ export interface NormalizedChapter {
   attribution: Attribution;
   fums?: FumsMetadata;
   error?: BibleError;
+  originalSourceOmissions?: Readonly<
+    Record<number, ManuscriptOmissionAnnotation>
+  >;
 }
 
 export interface BibleProviderRequest {
@@ -205,11 +233,13 @@ export interface ChapterCell {
   canonicalSlots: readonly VerseReference[];
   display: boolean;
   rowSpan: number;
+  continuation?: boolean;
 }
 
 export interface ChapterRow {
   verse: number;
   cells: Partial<Record<TranslationId, readonly ChapterCell[]>>;
+  annotations?: Partial<Record<TranslationId, VerseAnnotation>>;
 }
 
 export interface ChapterVersion {

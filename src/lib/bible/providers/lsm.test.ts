@@ -25,14 +25,16 @@ describe("LsmProvider", () => {
     expect(formatLsmReference(reference)).toBe(value);
   });
 
-  it("requests canonical verses omitted from the original-language source", async () => {
+  it("requests a complete short chapter without OSIS input", async () => {
     const fetchMock = vi.fn<typeof fetch>(async (input) => {
-      const references = (
-        new URL(input.toString()).searchParams.get("String") ?? ""
-      ).split(",");
-      expect(references).toContain("Mark.11.26");
+      const url = new URL(input.toString());
+      expect(url.searchParams.get("String")).toBe("Mark 11");
+      expect(url.searchParams.has("In")).toBe(false);
       return Response.json({
-        verses: references.map((ref) => ({ ref, text: `text ${ref}` })),
+        verses: Array.from({ length: 33 }, (_, index) => ({
+          ref: `Mark 11:${index + 1}`,
+          text: `text ${index + 1}`,
+        })),
         copyright: "LSM copyright",
       });
     });
@@ -51,6 +53,68 @@ describe("LsmProvider", () => {
     expect(chapter.verses).toHaveLength(33);
     expect(chapter.verses[25].slots).toEqual([
       { book: "MRK", chapter: 11, verse: 26 },
+    ]);
+  });
+
+  it("uses an explicit human range for Philemon", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      const url = new URL(input.toString());
+      expect(url.searchParams.get("String")).toBe("Philem. 1-25");
+      expect(url.searchParams.has("In")).toBe(false);
+      return Response.json({
+        verses: Array.from({ length: 25 }, (_, index) => ({
+          ref: `Philem. ${index + 1}`,
+          text: `text ${index + 1}`,
+        })),
+        copyright: "LSM copyright",
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const provider = new LsmProvider({
+      appId: "test-app",
+      token: "test-token",
+      baseUrl: "https://lsm.invalid/txo.php",
+    });
+
+    const [chapter] = await provider.getChapter({
+      reference: { book: "PHM", chapter: 1 },
+      translations: ["rcv"],
+    });
+
+    expect(chapter.verses).toHaveLength(25);
+    expect(chapter.verses.at(-1)?.slots).toEqual([
+      { book: "PHM", chapter: 1, verse: 25 },
+    ]);
+  });
+
+  it("keeps terminal verses returned by a short chapter request", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      const url = new URL(input.toString());
+      expect(url.searchParams.get("String")).toBe("Acts 19");
+      expect(url.searchParams.has("In")).toBe(false);
+      return Response.json({
+        verses: Array.from({ length: 41 }, (_, index) => ({
+          ref: `Acts 19:${index + 1}`,
+          text: `text ${index + 1}`,
+        })),
+        copyright: "LSM copyright",
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const provider = new LsmProvider({
+      appId: "test-app",
+      token: "test-token",
+      baseUrl: "https://lsm.invalid/txo.php",
+    });
+
+    const [chapter] = await provider.getChapter({
+      reference: { book: "ACT", chapter: 19 },
+      translations: ["rcv"],
+    });
+
+    expect(chapter.verses).toHaveLength(41);
+    expect(chapter.verses.at(-1)?.slots).toEqual([
+      { book: "ACT", chapter: 19, verse: 41 },
     ]);
   });
 
@@ -98,14 +162,17 @@ describe("LsmProvider", () => {
 
   it("accepts a legacy combined app ID and token", async () => {
     const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
-      const references = (
-        new URL(input.toString()).searchParams.get("String") ?? ""
-      ).split(",");
+      const url = new URL(input.toString());
+      expect(url.searchParams.get("String")).toBe("Genesis 1");
+      expect(url.searchParams.has("In")).toBe(false);
       expect(init?.headers).toMatchObject({
         Authorization: `Basic ${Buffer.from("test-app:test-token").toString("base64")}`,
       });
       return Response.json({
-        verses: references.map((ref) => ({ ref, text: `text ${ref}` })),
+        verses: Array.from({ length: 31 }, (_, index) => ({
+          ref: `Genesis 1:${index + 1}`,
+          text: `text ${index + 1}`,
+        })),
         copyright: "LSM copyright",
       });
     });

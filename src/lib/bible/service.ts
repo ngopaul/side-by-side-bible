@@ -182,7 +182,35 @@ export function alignChapters(
           cells[translation] = matching;
         }
       }
-      return { verse: verseNumber, cells };
+      const original = translations.includes("original")
+        ? chapters.get("original")
+        : undefined;
+      const annotation = original?.originalSourceOmissions?.[verseNumber];
+      const originalHasText = cells.original?.some((cell) => cell.text.trim());
+      const translationHasText = Object.entries(cells).some(
+        ([translation, chapterCells]) =>
+          translation !== "original" &&
+          chapterCells.some((cell) => cell.text.trim()),
+      );
+      const annotations: ChapterRow["annotations"] = {};
+      if (annotation && !originalHasText && translationHasText) {
+        annotations.original = annotation;
+        for (const [translation, chapterCells] of Object.entries(cells)) {
+          if (
+            translation !== "original" &&
+            chapterCells.some((cell) => cell.text.trim())
+          ) {
+            annotations[translation as TranslationId] = annotation;
+          }
+        }
+      }
+      return {
+        verse: verseNumber,
+        cells,
+        ...(Object.keys(annotations).length > 0
+          ? { annotations }
+          : {}),
+      };
     });
 }
 

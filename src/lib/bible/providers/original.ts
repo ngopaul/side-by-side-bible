@@ -8,6 +8,7 @@ import { BibleProviderError } from "../provider";
 import type {
   BibleProvider,
   BibleProviderRequest,
+  ManuscriptOmissionAnnotation,
   NormalizedChapter,
   OriginalTextSourceId,
   TranslationMetadata,
@@ -25,6 +26,18 @@ export const ORIGINAL_TRANSLATION_METADATA = {
     provider: "original",
     availability: ["old"],
     direction: "rtl",
+    profile: {
+      approach: "Source text · Biblical Hebrew",
+      publication: "WLC transcription · OSHB morphology v2.0",
+      description:
+        "The public-domain Westminster Leningrad Codex with Open Scriptures lemma and morphology data.",
+      infoLinks: [
+        {
+          label: "Open Scriptures Hebrew Bible",
+          url: "https://github.com/openscriptures/morphhb",
+        },
+      ],
+    },
   },
   greek: {
     id: "original",
@@ -34,6 +47,22 @@ export const ORIGINAL_TRANSLATION_METADATA = {
     provider: "original",
     availability: ["new"],
     direction: "ltr",
+    profile: {
+      approach: "Source text · Koine Greek",
+      publication: "OGNT v3 · 2018",
+      description:
+        "A freely licensed Greek New Testament compiled as a close, NA-equivalent text for study and resource alignment.",
+      infoLinks: [
+        {
+          label: "Open Greek New Testament",
+          url: "https://github.com/eliranwong/OpenGNT",
+        },
+        {
+          label: "Scrivener 1894 Textus Receptus alternates",
+          url: "https://github.com/byztxt/greektext-scrivener",
+        },
+      ],
+    },
   },
 } as const satisfies Record<OriginalTextSourceId, TranslationMetadata>;
 
@@ -54,6 +83,13 @@ export class OriginalTextProvider implements BibleProvider {
       request.reference.book,
       request.reference.chapter,
     );
+    const originalSourceOmissions: Record<
+      number,
+      ManuscriptOmissionAnnotation
+    > = {};
+    for (const { verse, ...annotation } of chapter.omissions ?? []) {
+      originalSourceOmissions[verse] = annotation;
+    }
     return [
       {
         reference: chapter.reference,
@@ -65,6 +101,9 @@ export class OriginalTextProvider implements BibleProvider {
           text: verse.text,
         })),
         attribution: chapter.attribution,
+        ...(Object.keys(originalSourceOmissions).length > 0
+          ? { originalSourceOmissions }
+          : {}),
       },
     ];
   }
@@ -108,7 +147,8 @@ async function readChapterFile(
       value.translation !== translation ||
       value.reference.book !== book ||
       value.reference.chapter !== chapter ||
-      !Array.isArray(value.verses)
+      !Array.isArray(value.verses) ||
+      (value.omissions !== undefined && !Array.isArray(value.omissions))
     ) {
       throw new Error("Generated chapter identity does not match its path");
     }

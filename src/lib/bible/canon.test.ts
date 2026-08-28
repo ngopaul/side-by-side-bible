@@ -67,6 +67,22 @@ describe("Bible canon", () => {
     expect(MAX_SELECTED_VERSIONS).toBe(5);
   });
 
+  it("provides sourced reader guidance for every translation", () => {
+    for (const translation of TRANSLATIONS) {
+      expect(translation.profile.approach).not.toBe("");
+      expect(translation.profile.publication).not.toBe("");
+      expect(translation.profile.description.length).toBeGreaterThan(40);
+      expect(translation.profile.infoLinks.length).toBeGreaterThan(0);
+      for (const link of translation.profile.infoLinks) {
+        expect(link.label).not.toBe("");
+        expect(link.url).toMatch(/^https:\/\//u);
+      }
+    }
+    expect(
+      TRANSLATIONS.find(({ id }) => id === "original")?.profile.infoLinks,
+    ).toHaveLength(3);
+  });
+
   it("migrates and deduplicates legacy original-language IDs", () => {
     expect(
       normalizeTranslationIds([

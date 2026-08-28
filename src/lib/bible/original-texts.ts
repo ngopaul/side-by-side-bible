@@ -5,6 +5,7 @@ import type {
   Attribution,
   BookId,
   ChapterReference,
+  ManuscriptOmissionAnnotation,
   OriginalTextSourceId,
   SourceReference,
   VerseMapping,
@@ -17,11 +18,21 @@ export interface OriginalTextVerse {
   mapping: VerseMapping;
 }
 
+export interface OriginalTextOmission extends ManuscriptOmissionAnnotation {
+  verse: number;
+}
+
 export interface OriginalTextChapter {
   translation: OriginalTextSourceId;
   reference: ChapterReference;
   attribution: Attribution;
   verses: OriginalTextVerse[];
+  omissions?: OriginalTextOmission[];
+}
+
+export interface ScrivenerVerse {
+  reference: VerseReference;
+  text: string;
 }
 
 export const ORIGINAL_ATTRIBUTIONS = {
@@ -38,6 +49,64 @@ export const ORIGINAL_ATTRIBUTIONS = {
     license: "CC BY-SA 4.0",
   },
 } as const satisfies Record<OriginalTextSourceId, Attribution>;
+
+const SCRIVENER_BOOK_IDS = {
+  MT: "MAT",
+  MR: "MRK",
+  LU: "LUK",
+  JOH: "JHN",
+  AC: "ACT",
+  RO: "ROM",
+  "1CO": "1CO",
+  "2CO": "2CO",
+  GA: "GAL",
+  EPH: "EPH",
+  PHP: "PHP",
+  COL: "COL",
+  "1TH": "1TH",
+  "2TH": "2TH",
+  "1TI": "1TI",
+  "2TI": "2TI",
+  TIT: "TIT",
+  PHM: "PHM",
+  HEB: "HEB",
+  JAS: "JAS",
+  "1PE": "1PE",
+  "2PE": "2PE",
+  "1JO": "1JN",
+  "2JO": "2JN",
+  "3JO": "3JN",
+  JUDE: "JUD",
+  RE: "REV",
+} as const satisfies Record<string, BookId>;
+
+const SCRIVENER_GREEK_CHARACTERS: Readonly<Record<string, string>> = {
+  a: "α",
+  b: "β",
+  g: "γ",
+  d: "δ",
+  e: "ε",
+  z: "ζ",
+  h: "η",
+  y: "θ",
+  i: "ι",
+  k: "κ",
+  l: "λ",
+  m: "μ",
+  n: "ν",
+  x: "ξ",
+  o: "ο",
+  p: "π",
+  r: "ρ",
+  s: "σ",
+  v: "ς",
+  t: "τ",
+  u: "υ",
+  f: "φ",
+  c: "χ",
+  q: "ψ",
+  w: "ω",
+};
 
 interface ParsedReference {
   book: string;
@@ -169,6 +238,79 @@ export function parseGreekTsv(tsv: string): OriginalTextVerse[] {
       kind: "one-to-one",
     },
   }));
+}
+
+export function parseScrivenerBook(
+  filename: string,
+  source: string,
+): ScrivenerVerse[] {
+  const book = scrivenerBookId(filename);
+  const verses: {
+    reference: VerseReference;
+    lines: string[];
+  }[] = [];
+  let current: (typeof verses)[number] | undefined;
+
+  for (const line of source.replace(/^\uFEFF/, "").split(/\r?\n/)) {
+    const heading = /^\s*(\d+):(\d+)\s+(.*)$/u.exec(line);
+    if (heading) {
+      current = {
+        reference: {
+          book,
+          chapter: Number(heading[1]),
+          verse: Number(heading[2]),
+        },
+        lines: [],
+      };
+      verses.push(current);
+      const text = removeScrivenerTitle(heading[3]);
+      if (text) {
+        current.lines.push(text);
+      }
+      continue;
+    }
+    if (current && line.trim()) {
+      current.lines.push(line.trim());
+    }
+  }
+
+  const seen = new Set<string>();
+  return verses.map(({ reference, lines }) => {
+    const key = canonicalReferenceKey(reference);
+    if (seen.has(key)) {
+      throw new Error(`Duplicate Scrivener verse: ${key}`);
+    }
+    seen.add(key);
+    const text = transliterateScrivenerGreek(lines.join(" "));
+    if (!text) {
+      throw new Error(`Scrivener verse has no text: ${key}`);
+    }
+    return { reference, text };
+  });
+}
+
+export function transliterateScrivenerGreek(value: string): string {
+  return value.replace(/[a-z]/gu, (character) => {
+    const greek = SCRIVENER_GREEK_CHARACTERS[character];
+    if (!greek) {
+      throw new Error(`Unsupported Scrivener Greek character: ${character}`);
+    }
+    return greek;
+  });
+}
+
+function scrivenerBookId(filename: string): BookId {
+  const basename = filename.split(/[\\/]/u).at(-1) ?? filename;
+  const stem = basename.replace(/\.SCV$/iu, "").toUpperCase();
+  const book = SCRIVENER_BOOK_IDS[stem as keyof typeof SCRIVENER_BOOK_IDS];
+  if (!book) {
+    throw new Error(`Unknown Scrivener filename: ${filename}`);
+  }
+  return book;
+}
+
+function removeScrivenerTitle(value: string): string {
+  return value.replace(/\[[^\]]*\]/gu, "").trim();
 }
 
 function parseWrappedValues(value: string | undefined): string[] {

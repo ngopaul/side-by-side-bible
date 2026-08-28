@@ -4,6 +4,7 @@ import { verifyFumsReportToken } from "./fums";
 import { BibleService } from "./service";
 import type {
   BibleProvider,
+  ManuscriptOmissionAnnotation,
   NormalizedChapter,
   NormalizedVerse,
   TranslationId,
@@ -89,6 +90,17 @@ describe("BibleService", () => {
       provider: "original",
       availability: ["old"],
       direction: "rtl",
+      profile: {
+        approach: "Source text",
+        publication: "Test edition",
+        description: "Test description",
+        infoLinks: [
+          {
+            label: "Original source",
+            url: "https://example.com/original",
+          },
+        ],
+      },
     };
     const originalProvider = mockProvider("original", [originalChapter]);
     const service = new BibleService([originalProvider.provider]);
@@ -113,6 +125,74 @@ describe("BibleService", () => {
     expect(result.rows[0].cells.original?.[0].translation).toBe("original");
   });
 
+  it("annotates the Original gap and every translation that supplies text", async () => {
+    const originalChapter = chapter("original", [
+      verse([1], "original one"),
+      verse([3], "original three"),
+    ]);
+    originalChapter.originalSourceOmissions = {
+      2: omissionAnnotation,
+    };
+    const originalProvider = mockProvider("original", [originalChapter]);
+    const esvProvider = mockProvider("esv", [
+      chapter("esv", [
+        verse([1], "esv one"),
+        verse([2], "esv two"),
+        verse([3], "esv three"),
+        verse([4], "normal extra row"),
+      ]),
+    ]);
+    const service = new BibleService([
+      originalProvider.provider,
+      esvProvider.provider,
+    ]);
+
+    const result = await service.getChapter({
+      book: "GEN",
+      chapter: 1,
+      translations: ["original", "esv"],
+    });
+
+    expect(result.rows.find(({ verse: number }) => number === 2)).toMatchObject({
+      cells: { esv: [{ text: "esv two" }] },
+      annotations: {
+        original: omissionAnnotation,
+        esv: omissionAnnotation,
+      },
+    });
+    expect(
+      result.rows.find(({ verse: number }) => number === 4)?.annotations,
+    ).toBeUndefined();
+
+    const originalOnly = await service.getChapter({
+      book: "GEN",
+      chapter: 1,
+      translations: ["original"],
+    });
+    expect(
+      originalOnly.rows.find(({ verse: number }) => number === 2),
+    ).toBeUndefined();
+  });
+
+  it("does not annotate when the Original cell already has text", async () => {
+    const originalChapter = chapter("original");
+    originalChapter.originalSourceOmissions = {
+      2: omissionAnnotation,
+    };
+    const service = new BibleService([
+      mockProvider("original", [originalChapter]).provider,
+      mockProvider("esv", [chapter("esv")]).provider,
+    ]);
+
+    const result = await service.getChapter({
+      book: "GEN",
+      chapter: 1,
+      translations: ["original", "esv"],
+    });
+
+    expect(result.rows[1].annotations).toBeUndefined();
+  });
+
   it.each([
     [{ book: "BAD", chapter: 1, translations: ["esv"] }, "book"],
     [{ book: "GEN", chapter: 51, translations: ["esv"] }, "chapter"],
@@ -131,6 +211,18 @@ describe("BibleService", () => {
     await expect(service.getChapter(request)).rejects.toMatchObject({ field });
   });
 });
+
+const omissionAnnotation: ManuscriptOmissionAnnotation = {
+  type: "manuscript-omission",
+  alternateText: "alternate",
+  language: "Hebrew",
+  direction: "rtl",
+  sourceLabel: "Alternate source",
+  sourceUrl: "https://example.com/source",
+  license: "Public Domain",
+  explanation: "Some manuscripts omit this verse.",
+  provenance: "Fixture provenance",
+};
 
 function mockProvider(
   id: TranslationProvider,

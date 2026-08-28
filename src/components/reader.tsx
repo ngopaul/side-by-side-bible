@@ -10,6 +10,10 @@ import {
   getBook,
   getTranslation,
 } from "@/lib/bible/canon";
+import {
+  chapterSectionRanges,
+  resolveChapterPart,
+} from "@/lib/bible/chapter-sections";
 import type {
   BibleBook,
   BookId,
@@ -46,6 +50,7 @@ export function Reader({ book, chapter }: ReaderProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const versionsValue = searchParams.get("versions");
+  const partValue = searchParams.get("part");
   const urlVersions = useMemo(
     () => parseVersionsParam(versionsValue),
     [versionsValue],
@@ -59,6 +64,16 @@ export function Reader({ book, chapter }: ReaderProps) {
   const versionsKey = versions?.join(",") ?? "";
   const cacheKey = `${book}:${chapter}:${versionsKey}`;
   const currentBook = getBook(book);
+  const currentMatrix =
+    matrix?.reference.book === book && matrix.reference.chapter === chapter
+      ? matrix
+      : undefined;
+  const ranges = useMemo(
+    () => chapterSectionRanges(currentMatrix?.rows ?? 0),
+    [currentMatrix],
+  );
+  const partResolution = resolveChapterPart(partValue, ranges.length);
+  const activePart = partResolution.part;
 
   useEffect(() => {
     queueMicrotask(() => setPreferences(loadPreferences(window.localStorage)));
@@ -69,11 +84,17 @@ export function Reader({ book, chapter }: ReaderProps) {
       return;
     }
     if (!urlVersions) {
-      router.replace(chapterHref(book, chapter, versions), { scroll: false });
+      router.replace(
+        chapterHref(book, chapter, versions, partValue ?? undefined),
+        { scroll: false },
+      );
       return;
     }
     if (versionsValue !== urlVersions.join(",")) {
-      router.replace(chapterHref(book, chapter, urlVersions), { scroll: false });
+      router.replace(
+        chapterHref(book, chapter, urlVersions, partValue ?? undefined),
+        { scroll: false },
+      );
     }
     if (preferences.versions.join(",") !== urlVersions.join(",")) {
       savePreferences(window.localStorage, {
@@ -85,6 +106,7 @@ export function Reader({ book, chapter }: ReaderProps) {
     book,
     chapter,
     preferences,
+    partValue,
     router,
     urlVersions,
     versions,
@@ -154,6 +176,28 @@ export function Reader({ book, chapter }: ReaderProps) {
   }, [book, cacheKey, chapter, retryCount, versions]);
 
   useEffect(() => {
+    if (
+      !currentMatrix ||
+      !versions ||
+      !partResolution.canonicalize
+    ) {
+      return;
+    }
+    router.replace(
+      chapterHref(book, chapter, versions, partResolution.part),
+      { scroll: false },
+    );
+  }, [
+    book,
+    chapter,
+    currentMatrix,
+    partResolution.canonicalize,
+    partResolution.part,
+    router,
+    versions,
+  ]);
+
+  useEffect(() => {
     if (!matrix || matrix.reference.book !== book || matrix.reference.chapter !== chapter) {
       return;
     }
@@ -212,7 +256,7 @@ export function Reader({ book, chapter }: ReaderProps) {
             {versions
               .map(
                 (id) =>
-                  matrix?.versions.find(
+                  currentMatrix?.versions.find(
                     ({ translation }) => translation.id === id,
                   )?.translation.abbreviation ??
                   getTranslation(id).abbreviation,
@@ -222,9 +266,18 @@ export function Reader({ book, chapter }: ReaderProps) {
         ) : null}
       </div>
       <ScriptureGrid
-        matrix={requestError ? undefined : matrix}
+        matrix={requestError ? undefined : currentMatrix}
         loading={loading}
         requestedVersions={versions ?? []}
+        activePart={activePart}
+        ranges={ranges}
+        onPartChange={(part) => {
+          if (versions) {
+            router.push(chapterHref(book, chapter, versions, part), {
+              scroll: false,
+            });
+          }
+        }}
         onRetry={retry}
       />
     </main>
@@ -351,8 +404,12 @@ function chapterHref(
   book: BookId,
   chapter: number,
   versions: readonly TranslationId[],
+  part?: number | string,
 ): string {
-  return `/read/${book}/${chapter}?versions=${versions.join(",")}`;
+  const href = `/read/${book}/${chapter}?versions=${versions.join(",")}`;
+  return part === undefined
+    ? href
+    : `${href}&part=${encodeURIComponent(String(part))}`;
 }
 
 function navigationBooks(

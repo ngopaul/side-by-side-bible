@@ -69,7 +69,9 @@ describe("provider parsers", () => {
       "In the beginning, God created.",
       "The earth was without form.",
     ]);
-    expect(chapter.attribution.text).toBe("(ESV)");
+    expect(chapter.attribution.text).toBe(
+      "Scripture quotations are from The ESV® Bible (The Holy Bible, English Standard Version®), © 2001 by Crossway, a publishing ministry of Good News Publishers. Used by permission. All rights reserved.",
+    );
   });
 
   it("parses LSM references and preserves response copyright", () => {

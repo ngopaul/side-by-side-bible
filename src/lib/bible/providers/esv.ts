@@ -64,7 +64,8 @@ export class EsvProvider implements BibleProvider {
     url.searchParams.set("include-footnotes", "false");
     url.searchParams.set("include-headings", "false");
     url.searchParams.set("include-crossrefs", "false");
-    url.searchParams.set("include-short-copyright", "true");
+    url.searchParams.set("include-short-copyright", "false");
+    url.searchParams.set("include-copyright", "true");
     url.searchParams.set("include-audio-link", "false");
 
     const response = await fetch(url, {

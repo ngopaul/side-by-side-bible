@@ -43,7 +43,7 @@ All credentials remain on the server. The browser calls only the application’s
 - `scripts/build-original-texts.ts` converts the OSHB XML and OGNT base-text archive into server-only chapter JSON.
 - `src/components/reader.tsx` keeps book, chapter, and versions in the URL while storing only preferences and anonymous reporting IDs in browser storage.
 
-Provider failures are isolated to their columns. Hebrew uses the WLC-to-KJV verse map where numbering differs, and merged verse mappings use table row spans so later verses stay aligned.
+Provider failures are isolated to their columns. Hebrew uses the WLC-to-KJV verse map where numbering differs, and merged verse mappings use table row spans so later verses stay aligned. Missing original-language verses display clearly labeled alternate text: public-domain Scrivener 1894 Textus Receptus for OGNT gaps and OSHB Ezra 2:66 for Nehemiah 7:68.
 
 ## Caching and provider limits
 
@@ -62,6 +62,7 @@ The application has no export, bulk-download, or offline-reading feature. Any te
 - Recovery Version text is supplied at request time by Living Stream Ministry. Its returned copyright statement is displayed, and its text is not stored for offline use.
 - Open Scriptures Hebrew Bible is based on the public-domain Westminster Leningrad Codex and licensed CC BY 4.0 with attribution.
 - Open Greek New Testament is licensed CC BY-SA 4.0 with attribution.
+- Scrivener’s 1894 Textus Receptus alternate readings are supplied by the official ByzTxt transcription and are public domain.
 
 Commercial NIV use requires separate permission from Biblica. Before public deployment, review the signed API.Bible/ABS agreement directly; text extraction from the PDFs in this repository is not sufficient legal verification.
 

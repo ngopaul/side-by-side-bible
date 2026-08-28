@@ -16,6 +16,9 @@ const LSM_MAX_VERSES_PER_REQUEST = 50;
 const LSM_BOOK_IDS: Partial<Record<BookId, string>> = {
   PHM: "Philem",
 };
+const LSM_HUMAN_BOOK_NAMES: Partial<Record<BookId, string>> = {
+  PHM: "Philem.",
+};
 
 interface LsmConfig {
   appId: string;
@@ -67,7 +70,8 @@ export class LsmProvider implements BibleProvider {
   private async fetchChapter(
     request: BibleProviderRequest,
   ): Promise<NormalizedChapter> {
-    const testament = getBook(request.reference.book).testament;
+    const book = getBook(request.reference.book);
+    const testament = book.testament;
     const source = await readGeneratedOriginalChapter(
       testament === "old" ? "hebrew" : "greek",
       request.reference.book,
@@ -95,12 +99,27 @@ export class LsmProvider implements BibleProvider {
       ...request.reference,
       verse: index + 1,
     }));
-    const chunks = chunk(requested, LSM_MAX_VERSES_PER_REQUEST);
-    const responses = await Promise.all(
-      chunks.map((references) =>
-        this.fetchVerses(request, references),
-      ),
-    );
+    const responses = lastVerse <= LSM_MAX_VERSES_PER_REQUEST
+      ? [
+          await this.fetchVerses(
+            request,
+            requested,
+            book.chapters === 1
+              ? `${LSM_HUMAN_BOOK_NAMES[book.id] ?? book.name} 1-${lastVerse}`
+              : `${book.name} ${request.reference.chapter}`,
+            false,
+          ),
+        ]
+      : await Promise.all(
+          chunk(requested, LSM_MAX_VERSES_PER_REQUEST).map((references) =>
+            this.fetchVerses(
+              request,
+              references,
+              references.map(formatLsmReference).join(","),
+              true,
+            ),
+          ),
+        );
     return {
       reference: request.reference,
       translation: "rcv",
@@ -117,15 +136,14 @@ export class LsmProvider implements BibleProvider {
   private async fetchVerses(
     request: BibleProviderRequest,
     references: readonly VerseReference[],
+    query: string,
+    isOsis: boolean,
   ) {
     const url = new URL(this.baseUrl);
-    url.searchParams.set(
-      "String",
-      references
-        .map(formatLsmReference)
-        .join(","),
-    );
-    url.searchParams.set("In", "osis");
+    url.searchParams.set("String", query);
+    if (isOsis) {
+      url.searchParams.set("In", "osis");
+    }
     url.searchParams.set("Lang", "eng");
     url.searchParams.set("Out", "json");
     const authorization = Buffer.from(

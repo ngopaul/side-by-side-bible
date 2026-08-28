@@ -120,9 +120,16 @@ export function SettingsForm() {
                   onChange={() => toggleVersion(translation.id)}
                 />
                 <span className="choice-copy">
-                  <span>
+                  <span className="choice-heading">
                     <strong>{translation.abbreviation}</strong>
                     <span>{translation.name}</span>
+                  </span>
+                  <span className="translation-facts">
+                    <span>{translation.profile.approach}</span>
+                    <span>{translation.profile.publication}</span>
+                  </span>
+                  <span className="translation-description">
+                    {translation.profile.description}
                   </span>
                   <small>{scope}</small>
                 </span>

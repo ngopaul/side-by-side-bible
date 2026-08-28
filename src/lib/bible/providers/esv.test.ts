@@ -1,8 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { formatEsvChapterQuery } from "./esv";
+import fixture from "../__fixtures__/esv.json";
+import { EsvProvider, formatEsvChapterQuery } from "./esv";
 
 describe("ESV chapter queries", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it.each([
     ["OBA", "Obadiah"],
     ["PHM", "Philemon"],
@@ -18,5 +23,26 @@ describe("ESV chapter queries", () => {
     [{ book: "JHN", chapter: 3 } as const, "John 3"],
   ])("keeps chapter for multi-chapter books", (reference, query) => {
     expect(formatEsvChapterQuery(reference)).toBe(query);
+  });
+
+  it("requests the full copyright notice", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      Response.json(fixture),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const provider = new EsvProvider({
+      token: "server-token",
+      baseUrl: "https://esv.invalid/passage/html/",
+    });
+
+    await provider.getChapter({
+      reference: { book: "GEN", chapter: 1 },
+      translations: ["esv"],
+    });
+
+    const [input] = fetchMock.mock.calls[0];
+    const url = new URL(input.toString());
+    expect(url.searchParams.get("include-short-copyright")).toBe("false");
+    expect(url.searchParams.get("include-copyright")).toBe("true");
   });
 });

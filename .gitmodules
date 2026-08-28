@@ -7,3 +7,6 @@
 [submodule "OpenHebrewBible"]
 	path = OpenHebrewBible
 	url = https://github.com/eliranwong/OpenHebrewBible.git
+[submodule "greektext-scrivener"]
+	path = greektext-scrivener
+	url = https://github.com/byztxt/greektext-scrivener.git
