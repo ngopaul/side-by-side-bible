@@ -73,7 +73,7 @@ export class LsmProvider implements BibleProvider {
       request.reference.book,
       request.reference.chapter,
     );
-    const requested = uniqueReferences(
+    const available = uniqueReferences(
       source.verses.flatMap((verse) =>
         verse.mapping.canonicalSlots.filter(
           (slot) =>
@@ -82,6 +82,19 @@ export class LsmProvider implements BibleProvider {
         ),
       ),
     );
+    const lastVerse = available.at(-1)?.verse;
+    if (!lastVerse) {
+      throw new BibleProviderError(
+        "invalid-response",
+        "Canonical chapter metadata did not contain any verses",
+        this.id,
+        false,
+      );
+    }
+    const requested = Array.from({ length: lastVerse }, (_, index) => ({
+      ...request.reference,
+      verse: index + 1,
+    }));
     const chunks = chunk(requested, LSM_MAX_VERSES_PER_REQUEST);
     const responses = await Promise.all(
       chunks.map((references) =>

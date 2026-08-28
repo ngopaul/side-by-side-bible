@@ -25,6 +25,35 @@ describe("LsmProvider", () => {
     expect(formatLsmReference(reference)).toBe(value);
   });
 
+  it("requests canonical verses omitted from the original-language source", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      const references = (
+        new URL(input.toString()).searchParams.get("String") ?? ""
+      ).split(",");
+      expect(references).toContain("Mark.11.26");
+      return Response.json({
+        verses: references.map((ref) => ({ ref, text: `text ${ref}` })),
+        copyright: "LSM copyright",
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const provider = new LsmProvider({
+      appId: "test-app",
+      token: "test-token",
+      baseUrl: "https://lsm.invalid/txo.php",
+    });
+
+    const [chapter] = await provider.getChapter({
+      reference: { book: "MRK", chapter: 11 },
+      translations: ["rcv"],
+    });
+
+    expect(chapter.verses).toHaveLength(33);
+    expect(chapter.verses[25].slots).toEqual([
+      { book: "MRK", chapter: 11, verse: 26 },
+    ]);
+  });
+
   it("chunks at 50 verses, deduplicates in flight, and never stores responses", async () => {
     const fetchMock = vi.fn<typeof fetch>(async (input) => {
       const url = new URL(input.toString());
