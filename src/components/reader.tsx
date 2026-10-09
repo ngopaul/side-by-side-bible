@@ -233,6 +233,8 @@ export function Reader({ book, chapter }: ReaderProps) {
   const next = adjacentChapter(visibleBooks, book, chapter, 1);
   const retry = () => setRetryCount((value) => value + 1);
 
+  const currentBookDisplayName = currentBook.name === "Psalms" ? "Psalm" : currentBook.name;
+
   return (
     <main className="reader-shell">
       <ReaderToolbar
@@ -248,7 +250,7 @@ export function Reader({ book, chapter }: ReaderProps) {
         <div>
           <span className="eyebrow">Reading</span>
           <h1>
-            {currentBook.name} <span>{chapter}</span>
+            {currentBookDisplayName} <span>{chapter}</span>
           </h1>
         </div>
         {versions ? (
