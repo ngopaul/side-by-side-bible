@@ -15,6 +15,7 @@ Requirements:
 git submodule update --init --recursive
 npm install
 cp .env.example .env.local
+npm run build
 npm run dev
 ```
 
@@ -23,6 +24,8 @@ Open `http://localhost:3000`. Original-language chapter files are generated befo
 ```sh
 npm run generate:data
 ```
+
+
 
 ## Environment
 
