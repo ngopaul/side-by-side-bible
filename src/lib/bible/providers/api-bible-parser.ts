@@ -117,6 +117,13 @@ function parseJsonContent(
   const texts = new Map<number, string[]>();
   const state: { verse?: number; skipDepth: number } = { skipDepth: 0 };
 
+  // USFM tags from NIV API call, universal across major versions
+  const LINE_BREAK_STYLES = new Set(["q", "q1", "q2", "q3", "q4", "b", "p", "m"]);
+  const appendText = (verse: number, text: string) => {
+    const current = texts.get(verse) ?? [];
+    texts.set(verse, [...current, text]);
+  };
+
   const walk = (node: unknown): void => {
     if (Array.isArray(node)) {
       for (const child of node) {
@@ -137,6 +144,14 @@ function parseJsonContent(
     if (parsed?.chapter === reference.chapter) {
       state.verse = parsed.verse;
     }
+
+    // use '\n' characters to indicate where poetry line breaks / paragraph breaks occur
+    // the '\n' character does not appear in the API calls' text itself. if they did, they would be considered line breaks
+    const styleAttr = stringValue(attrs?.style) ?? stringValue(record.style);
+    if (styleAttr && LINE_BREAK_STYLES.has(styleAttr) && state.verse !== undefined && state.skipDepth === 0) {
+      appendText(state.verse, "\n");
+    }
+
     const classes = [
       ...stringArray(attrs?.class),
       ...stringArray(record.class),
@@ -156,7 +171,7 @@ function parseJsonContent(
     }
     const text = stringValue(record.text);
     if (text && state.verse !== undefined && state.skipDepth === 0) {
-      texts.set(state.verse, [...(texts.get(state.verse) ?? []), text]);
+      appendText(state.verse, text);
     }
     for (const key of ["items", "children", "content"]) {
       if (key in record) {
@@ -172,7 +187,15 @@ function parseJsonContent(
   return [...texts.entries()]
     .sort(([left], [right]) => left - right)
     .flatMap(([verse, parts]) => {
-      const text = htmlToText(parts.join(""));
+      const rawLines = parts.join("").split("\n");
+      
+      // make a list of lines (strings)
+      const lines = rawLines
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+
+      // concatenate lines
+      const text = htmlToText(lines.join(" / "));
       return text ? [normalizedVerse(reference, verse, text)] : [];
     });
 }
