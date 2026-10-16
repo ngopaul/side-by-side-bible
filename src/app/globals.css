@@ -499,6 +499,24 @@ input {
   color: var(--border-strong);
 }
 
+/* to match youversion */
+.poetry-line {
+  display: block;
+  padding-inline-start: 2em;                     /* wrapped lines: always 2em */
+  text-indent: calc(var(--first-line, 0em) - 2em);
+}
+.poetry-q1 { --first-line: 0em; }   /* first line flush left */
+.poetry-q2 { --first-line: 1em; }   /* first line indented 1em */
+.poetry-q3 { --first-line: 2em; }
+.poetry-q4 { --first-line: 3em; }   /* not sure what to do for these if wrapped lines always start at 2 em*/ 
+/* for wrapped-around lines, there's 2 additional em on top of tag-specified indentation, whereas most poetry identation levels differ by only 1 em
+.poetry-line {
+  display: block;
+  --level: 0;  
+  padding-inline-start: calc((var(--first-line) + 2) * 1em);
+  text-indent: -2em;
+}*/
+
 .omission-reading {
   position: relative;
   display: block;
