@@ -195,10 +195,18 @@ export interface BibleError {
   retryable: boolean;
 }
 
+export type VerseLineStyle = "p" | "m" | "b" | "q" | "q1" | "q2" | "q3" | "q4";
+
+export interface VerseLine {
+  style: VerseLineStyle;
+  text: string;
+}
+
 export interface NormalizedVerse {
   slots: readonly VerseReference[];
   sourceReferences: readonly SourceReference[];
   text: string;
+  lines?: readonly VerseLine[]; // only set when the verse contains poetry
 }
 
 export interface NormalizedChapter {
@@ -229,6 +237,7 @@ export interface BibleProvider {
 export interface ChapterCell {
   translation: TranslationId;
   text: string;
+  lines?: readonly VerseLine[];
   sourceReferences: readonly SourceReference[];
   canonicalSlots: readonly VerseReference[];
   display: boolean;

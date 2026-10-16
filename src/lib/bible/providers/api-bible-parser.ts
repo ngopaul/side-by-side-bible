@@ -6,6 +6,8 @@ import type {
   NormalizedChapter,
   NormalizedVerse,
   TranslationId,
+  VerseLine,
+  VerseLineStyle,
 } from "../types";
 
 type UnknownRecord = Record<string, unknown>;
@@ -114,14 +116,28 @@ function parseJsonContent(
   content: unknown,
   reference: ChapterReference,
 ): NormalizedVerse[] {
-  const texts = new Map<number, string[]>();
-  const state: { verse?: number; skipDepth: number } = { skipDepth: 0 };
+  interface Segment {
+    lineId: number;
+    style: VerseLineStyle;
+    text: string;
+  }
+  const texts = new Map<number, Segment[]>();
+  const state: {
+    verse?: number;
+    skipDepth: number;
+    lineId: number;
+    style: VerseLineStyle;
+  } = { skipDepth: 0, lineId: 0, style: "p" };
 
-  // USFM tags from NIV API call, universal across major versions
-  const LINE_BREAK_STYLES = new Set(["q", "q1", "q2", "q3", "q4", "b", "p", "m"]);
+  // USFM paragraph styles from the NIV API call, universal across major versions
+  const LINE_STYLES = new Set<string>(["q", "q1", "q2", "q3", "q4", "b", "p", "m"]);
+  const isLineStyle = (value: string): value is VerseLineStyle =>
+    LINE_STYLES.has(value);
+
   const appendText = (verse: number, text: string) => {
-    const current = texts.get(verse) ?? [];
-    texts.set(verse, [...current, text]);
+    const segments = texts.get(verse) ?? [];
+    segments.push({ lineId: state.lineId, style: state.style, text });
+    texts.set(verse, segments);
   };
 
   const walk = (node: unknown): void => {
@@ -145,11 +161,12 @@ function parseJsonContent(
       state.verse = parsed.verse;
     }
 
-    // use '\n' characters to indicate where poetry line breaks / paragraph breaks occur
-    // the '\n' character does not appear in the API calls' text itself. if they did, they would be considered line breaks
+    // Each paragraph-style node starts a new line. Track it as state so every
+    // text segment knows which line (and indent level) it belongs to.
     const styleAttr = stringValue(attrs?.style) ?? stringValue(record.style);
-    if (styleAttr && LINE_BREAK_STYLES.has(styleAttr) && state.verse !== undefined && state.skipDepth === 0) {
-      appendText(state.verse, "\n");
+    if (styleAttr && isLineStyle(styleAttr) && state.skipDepth === 0) {
+      state.lineId += 1;
+      state.style = styleAttr;
     }
 
     const classes = [
@@ -184,19 +201,35 @@ function parseJsonContent(
   };
 
   walk(content);
+
   return [...texts.entries()]
     .sort(([left], [right]) => left - right)
-    .flatMap(([verse, parts]) => {
-      const rawLines = parts.join("").split("\n");
-      
-      // make a list of lines (strings)
-      const lines = rawLines
-        .map((line) => line.trim())
-        .filter((line) => line.length > 0);
+    .flatMap(([verse, segments]) => {
+      // merge consecutive segments from the same paragraph node into one line
+      const merged: { lineId: number; style: VerseLineStyle; text: string }[] = [];
+      for (const segment of segments) {
+        const last = merged[merged.length - 1];
+        if (last && last.lineId === segment.lineId) {
+          last.text += segment.text;
+        } else {
+          merged.push({ ...segment });
+        }
+      }
+      const lines: VerseLine[] = merged
+        .map(({ style, text }) => ({ style, text: htmlToText(text.trim()) }))
+        .filter((line) => line.text.length > 0);
 
-      // concatenate lines
-      const text = htmlToText(lines.join(" / "));
-      return text ? [normalizedVerse(reference, verse, text)] : [];
+      const text = lines.map((line) => line.text).join(" / ");
+      if (!text) {
+        return [];
+      }
+      const hasPoetry = lines.some((line) => line.style.startsWith("q"));
+      return [
+        {
+          ...normalizedVerse(reference, verse, text),
+          ...(hasPoetry ? { lines } : {}),
+        },
+      ];
     });
 }
 
