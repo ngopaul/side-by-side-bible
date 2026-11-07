@@ -6,6 +6,8 @@ import type {
   NormalizedChapter,
   NormalizedVerse,
   TranslationId,
+  VerseLine,
+  VerseLineStyle,
 } from "../types";
 
 type UnknownRecord = Record<string, unknown>;
@@ -114,8 +116,29 @@ function parseJsonContent(
   content: unknown,
   reference: ChapterReference,
 ): NormalizedVerse[] {
-  const texts = new Map<number, string[]>();
-  const state: { verse?: number; skipDepth: number } = { skipDepth: 0 };
+  interface Segment {
+    lineId: number;
+    style: VerseLineStyle;
+    text: string;
+  }
+  const texts = new Map<number, Segment[]>();
+  const state: {
+    verse?: number;
+    skipDepth: number;
+    lineId: number;
+    style: VerseLineStyle;
+  } = { skipDepth: 0, lineId: 0, style: "p" };
+
+  // USFM paragraph styles from the NIV API call, universal across major versions
+  const LINE_STYLES = new Set<string>(["q", "q1", "q2", "q3", "q4", "b", "p", "m"]);
+  const isLineStyle = (value: string): value is VerseLineStyle =>
+    LINE_STYLES.has(value);
+
+  const appendText = (verse: number, text: string) => {
+    const segments = texts.get(verse) ?? [];
+    segments.push({ lineId: state.lineId, style: state.style, text });
+    texts.set(verse, segments);
+  };
 
   const walk = (node: unknown): void => {
     if (Array.isArray(node)) {
@@ -137,6 +160,15 @@ function parseJsonContent(
     if (parsed?.chapter === reference.chapter) {
       state.verse = parsed.verse;
     }
+
+    // Each paragraph-style node starts a new line. Track it as state so every
+    // text segment knows which line (and indent level) it belongs to.
+    const styleAttr = stringValue(attrs?.style) ?? stringValue(record.style);
+    if (styleAttr && isLineStyle(styleAttr) && state.skipDepth === 0) {
+      state.lineId += 1;
+      state.style = styleAttr;
+    }
+
     const classes = [
       ...stringArray(attrs?.class),
       ...stringArray(record.class),
@@ -156,7 +188,7 @@ function parseJsonContent(
     }
     const text = stringValue(record.text);
     if (text && state.verse !== undefined && state.skipDepth === 0) {
-      texts.set(state.verse, [...(texts.get(state.verse) ?? []), text]);
+      appendText(state.verse, text);
     }
     for (const key of ["items", "children", "content"]) {
       if (key in record) {
@@ -169,11 +201,35 @@ function parseJsonContent(
   };
 
   walk(content);
+
   return [...texts.entries()]
     .sort(([left], [right]) => left - right)
-    .flatMap(([verse, parts]) => {
-      const text = htmlToText(parts.join(""));
-      return text ? [normalizedVerse(reference, verse, text)] : [];
+    .flatMap(([verse, segments]) => {
+      // merge consecutive segments from the same paragraph node into one line
+      const merged: { lineId: number; style: VerseLineStyle; text: string }[] = [];
+      for (const segment of segments) {
+        const last = merged[merged.length - 1];
+        if (last && last.lineId === segment.lineId) {
+          last.text += segment.text;
+        } else {
+          merged.push({ ...segment });
+        }
+      }
+      const lines: VerseLine[] = merged
+        .map(({ style, text }) => ({ style, text: htmlToText(text.trim()) }))
+        .filter((line) => line.text.length > 0);
+
+      const text = lines.map((line) => line.text).join(" / ");
+      if (!text) {
+        return [];
+      }
+      const hasPoetry = lines.some((line) => line.style.startsWith("q"));
+      return [
+        {
+          ...normalizedVerse(reference, verse, text),
+          ...(hasPoetry ? { lines } : {}),
+        },
+      ];
     });
 }
 

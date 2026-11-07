@@ -226,6 +226,7 @@ function createCell(
   return {
     translation,
     text: verse.text,
+    ...(verse.lines ? { lines: verse.lines } : {}),
     sourceReferences: verse.sourceReferences,
     canonicalSlots: slots,
     display: slots[0]?.verse === rowVerse,

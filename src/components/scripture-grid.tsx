@@ -409,7 +409,16 @@ function VerseCell({
             key={`${cell.canonicalSlots.map(({ verse }) => verse).join("-")}-${index}`}
             title={sourceLabel(cell)}
           >
-            {cell.text}
+            {cell.lines
+              ? cell.lines.map((line, lineIndex) => (
+                  <span
+                    className={`poetry-line poetry-${line.style}`}
+                    key={lineIndex}
+                  >
+                    {line.text}
+                  </span>
+                ))
+              : cell.text}
           </p>
         ),
       )}

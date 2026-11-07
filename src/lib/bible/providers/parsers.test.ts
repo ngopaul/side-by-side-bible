@@ -93,4 +93,35 @@ describe("provider parsers", () => {
       parseLsmReference("Philem. 1:2", { book: "PHM", chapter: 1 }),
     ).toEqual({ book: "PHM", chapter: 1, verse: 2 });
   });
+
+  it("keeps poetry line styles for NIV-style q1/q2 paragraphs", () => {
+    const verseSpan = (id: string, text: string) => ({
+      name: "verse-span",
+      attrs: { verseId: id },
+      items: [{ type: "text", text, attrs: { verseId: id } }],
+    });
+    const verses = parseApiBibleContent(
+      [
+        {
+          name: "para",
+          attrs: { style: "q1" },
+          items: [verseSpan("ISA.9.2", "The people walking in darkness")],
+        },
+        {
+          name: "para",
+          attrs: { style: "q2" },
+          items: [verseSpan("ISA.9.2", "have seen a great light;")],
+        },
+      ],
+      { book: "ISA", chapter: 9 },
+    );
+
+    expect(verses[0].text).toBe(
+      "The people walking in darkness / have seen a great light;",
+    );
+    expect(verses[0].lines).toEqual([
+      { style: "q1", text: "The people walking in darkness" },
+      { style: "q2", text: "have seen a great light;" },
+    ]);
+  });
 });
